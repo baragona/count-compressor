@@ -30,7 +30,7 @@ my %field_name_to_col = map { $field_names{$_} => $_} keys %field_names;
 
 my @col_to_alphabet = @{$index->{col_to_alphabet}};
 
-my @col_to_predicted_cols = @{$index->{col_to_predicted_cols}};
+my %col_to_predicted_cols = %{$index->{col_to_predicted_cols}};
 my @predictor_cols = @{$index->{predictor_cols}};
 
 
@@ -54,8 +54,8 @@ for (my $c=0;$c<$n_cols;$c++){
 my @col_to_stored_vals;
 
 my @previous_row;
-my @col_to_value_to_friends_str_to_count;
-my @col_to_value_to_most_popular_friends;
+my %col_to_value_to_friends_str_to_count;
+my %col_to_value_to_most_popular_friends;
 
 my $bitstring_buffer='';
 my $total_bits_read=0;
@@ -104,13 +104,12 @@ while(not stream_finished){
     $r++;
     #my $next_bit=0;
     my %col_was_predicted;
-    my @col_to_predicted_val;
     my %predictor_column_used;
-    for my $c(@predictor_cols){
+    for my $ceez(@predictor_cols){
 
         #check if you needed to store a predictor used bit. if everything it would have predicted is already predicted, there is no need.
         my $need_predictor_bit=0;
-        my @predicted_cols = @{$col_to_predicted_cols[$c]};
+        my @predicted_cols = @{$col_to_predicted_cols{$ceez}};
         CC: for my $cc(@predicted_cols){
             if(not $col_was_predicted{$cc}){
                 $need_predictor_bit=1;
@@ -122,7 +121,7 @@ while(not stream_finished){
             #warn "$predictor_bit\n";
             if($predictor_bit){
                 #predicted
-                $predictor_column_used{$c}=1;
+                $predictor_column_used{$ceez}=1;
                 my $ci=0;
                 for my $cc(@predicted_cols){
                     $col_was_predicted{$cc}=1;
@@ -257,15 +256,19 @@ while(not stream_finished){
 
 
     #warn Dumper \@vals;
-    for (my $c=0;$c<$n_cols;$c++){
-        if($predictor_column_used{$c} and defined $vals[$c]){
-            #warn Dumper \@col_to_value_to_last_seen_friends;
-            #warn "col $c is a predictor col, it should have a value";
+    for my $ceez(@predictor_cols){
 
-            my @friends = @{thaw $col_to_value_to_most_popular_friends[$c]->{$vals[$c]}};
+        if($predictor_column_used{$ceez}){
+            #warn Dumper \@col_to_value_to_last_seen_friends;
+            #warn "colums $ceez is a predictor col, it should have a value";
+            my @ceez_refers = split /-/, $ceez;
+            #warn encode_json [map {$vals[$_]} @ceez_refers];
+            my $value = freeze([map {$vals[$_]} @ceez_refers]);
+            #warn $value;
+            my @friends = @{thaw $col_to_value_to_most_popular_friends{$ceez}->{$value}};
 
             my $ci=0;
-            for my $cc(@{$col_to_predicted_cols[$c]}){
+            for my $cc(@{$col_to_predicted_cols{$ceez}}){
 
                 $vals[$cc] = $friends[$ci];
                 $ci++;
@@ -280,20 +283,20 @@ while(not stream_finished){
         #print Dumper \%predictor_column_used;
     }
 
-    for (my $c=0;$c<$n_cols;$c++){
-        if($col_to_predicted_cols[$c]){
-            my @friends_i = @{$col_to_predicted_cols[$c]};
-            my @friends;
-            for my $f(@friends_i){
-                push @friends, $vals[$f];
-            }
-            my $friends_str = freeze(\@friends);
-            $col_to_value_to_friends_str_to_count[$c]->{$vals[$c]}{$friends_str}++;
-            my $new_count = $col_to_value_to_friends_str_to_count[$c]->{$vals[$c]}{$friends_str};
-            if((not defined $col_to_value_to_most_popular_friends[$c]->{$vals[$c]}) or ($new_count >= $col_to_value_to_friends_str_to_count[$c]->{$vals[$c]}->{$col_to_value_to_most_popular_friends[$c]->{$vals[$c]}})){
-                $col_to_value_to_most_popular_friends[$c]->{$vals[$c]}=$friends_str;
-            }
+    for my $ceez(@predictor_cols){
+        my @ceez_refers = split /-/, $ceez;
 
+        my $value = freeze([map {$vals[$_]} @ceez_refers]);
+        my @friends_i = @{$col_to_predicted_cols{$ceez}};
+        my @friends;
+        for my $f(@friends_i){
+            push @friends, $vals[$f];
+        }
+        my $friends_str = freeze(\@friends);
+        $col_to_value_to_friends_str_to_count{$ceez}->{$value}{$friends_str}++;
+        my $new_count = $col_to_value_to_friends_str_to_count{$ceez}->{$value}{$friends_str};
+        if((not defined $col_to_value_to_most_popular_friends{$ceez}->{$value}) or ($new_count >= $col_to_value_to_friends_str_to_count{$ceez}->{$value}->{$col_to_value_to_most_popular_friends{$ceez}->{$value}})){
+            $col_to_value_to_most_popular_friends{$ceez}->{$value}=$friends_str;
         }
     }
 
@@ -316,6 +319,6 @@ while(not stream_finished){
     seek_till_byte_boundary();
 }
 
-#warn Dumper \@col_to_value_to_most_popular_friends;
+#warn Dumper \%col_to_value_to_most_popular_friends;
 
 

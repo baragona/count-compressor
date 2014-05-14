@@ -52,34 +52,40 @@ warn Dumper \%field_name_to_col;
 
 my @predictors=(
 
-    uuid => [qw(sid ip ev cookied ctry state dma browser device os inmarket_clk inmarket_act inmarket_rt gender)],
-    ip   => [qw(ev cookied ctry state dma browser device os)],
-    sid  => [qw(ctry browser)],
+    [qw(uuid)] => [qw(sid ip ev cookied ctry state dma browser device os inmarket_clk inmarket_act inmarket_rt gender)],
+    [qw(ip)]   => [qw(ev cookied ctry state dma browser device os)],
+    [qw(sid)]  => [qw(ctry browser)],
+
     #pbmid => [qw(mid)],
     #cookied => [qw(os browser device)],
-    browser => [qw(device)],
+    #[qw(browser)] => [qw(device)],
     #device => [qw(os browser)],
-    os   => [qw(browser)],
-    dma  => [qw(state ctry)],
-    state => [qw(ctry)]
+    [qw(os)]   => [qw(browser)],
+    [qw(dma)]  => [qw(state ctry)],
+    [qw(state)] => [qw(ctry)],
+    [qw(sid pbmid ctry)]  => [qw(mid)],
 );
 
 my @predictor_cols;
 
-my @col_to_predicted_cols;
+my %col_to_predicted_cols;
+
+my @col_is_used_as_a_predictor;
+
 for (my $i=0; $i<= $#predictors/2; $i++){
 
+    my $left = join '-', map {$field_name_to_col{$_}} @{$predictors[2*$i]};
 
-    push @predictor_cols, $field_name_to_col{$predictors[2*$i]};
-    $col_to_predicted_cols[$field_name_to_col{$predictors[2*$i]}] = [sort {$a <=> $b} map {$field_name_to_col{$_}} @{$predictors[2*$i+1]}];
+    map {$col_is_used_as_a_predictor[$field_name_to_col{$_}] = 1} @{$predictors[2*$i]};
+
+    push @predictor_cols, $left;
+    $col_to_predicted_cols{$left} = [sort {$a <=> $b} map {$field_name_to_col{$_}} @{$predictors[2*$i+1]}];
 }
 
 
 
 
-#warn Dumper \@col_to_predicted_cols;exit;
-
-
+#warn Dumper \@col_is_used_as_a_predictor;exit;
 
 my $i=0;
 
@@ -159,7 +165,7 @@ while(<>){
 
 my @sort_order;
 for (my $c=0;$c<$n_cols;$c++){
-    if($col_to_predicted_cols[$c]){
+    if($col_is_used_as_a_predictor[$c]){
         push @sort_order, $c;
     }
 }
@@ -249,7 +255,7 @@ open INDEX, ">INDEX";
         n_cols => $n_cols,
         column_encodings => \@column_encodings,
         field_names => \%field_names,
-        col_to_predicted_cols => \@col_to_predicted_cols,
+        col_to_predicted_cols => \%col_to_predicted_cols,
         predictor_cols => \@predictor_cols,
         col_to_max_length => \@col_to_max_length,
         col_to_alphabet => \@col_to_alphabet,
@@ -306,8 +312,8 @@ open INDEX, ">INDEX";
 my @col_to_currently_stored_val_list;
 my @col_to_currently_stored_val_hash;
 
-my @col_to_value_to_friends_str_to_count;
-my @col_to_value_to_most_popular_friends;
+my %col_to_value_to_friends_str_to_count;
+my %col_to_value_to_most_popular_friends;
 
 my $rows_with_deletes=0;
 my $rows_with_copies=0;
@@ -338,11 +344,11 @@ for (my $r=0;$r<=$#records;$r++){
 
     my $encoding_list='';
 
-    for my $c(@predictor_cols){
+    for my $ceez(@predictor_cols){
 
         #check if you need to store a predictor used bit. if everything it would have predicted is already predicted, there is no need.
         my $need_predictor_bit=0;
-        my @predicted_cols = @{$col_to_predicted_cols[$c]};
+        my @predicted_cols = @{$col_to_predicted_cols{$ceez}};
         CC: for my $cc(@predicted_cols){
             if(not exists $col_was_predicted{$cc}){
                 $need_predictor_bit=1;
@@ -351,13 +357,18 @@ for (my $r=0;$r<=$#records;$r++){
         }
         if($need_predictor_bit){
             my $predictor_used_bit;
-            if(not exists $col_to_value_to_most_popular_friends[$c]->{$record->[$c]}){
+
+            my @ceez_refers = split /-/, $ceez;
+
+            my $value = freeze([map {$record->[$_]} @ceez_refers]);
+
+            if(not exists $col_to_value_to_most_popular_friends{$ceez}->{$value}){
                 #warn "predictor IMPOSSIBRU\n";
                 $predictor_used_bit='0';
             }else{
 
 
-                my @friends = @{thaw $col_to_value_to_most_popular_friends[$c]->{$record->[$c]}};
+                my @friends = @{thaw $col_to_value_to_most_popular_friends{$ceez}->{$value}};
                 my $matches=1;
                 my $ci=0;
                 PREDICTED_COL: for my $cc(@predicted_cols){
@@ -377,7 +388,7 @@ for (my $r=0;$r<=$#records;$r++){
                         $col_was_predicted{$cc}=1;
                     }
                     $predictor_used_bit='1';
-                    $predictor_col_used{$c}=1;
+                    $predictor_col_used{$ceez}=1;
                     $row_encoding_uses_predictor=1;
                 }else{
                     #predictor non-match
@@ -395,25 +406,29 @@ for (my $r=0;$r<=$#records;$r++){
 
     $row_header_bits .= $predictor_bits;
 
+    for my $ceez(@predictor_cols){
+        my @ceez_refers = split /-/, $ceez;
+
+        my $value = freeze([map {$record->[$_]} @ceez_refers]);
+
+        my @friends;
+        for my $f(@{$col_to_predicted_cols{$ceez}}){
+            push @friends, $record->[$f];
+        }
+        my $friends_str = freeze(\@friends);
+        $col_to_value_to_friends_str_to_count{$ceez}->{$value}->{$friends_str}++;
+        my $new_count = $col_to_value_to_friends_str_to_count{$ceez}->{$value}->{$friends_str};
+        if((not defined $col_to_value_to_most_popular_friends{$ceez}->{$value}) or ($new_count >= $col_to_value_to_friends_str_to_count{$ceez}->{$value}->{$col_to_value_to_most_popular_friends{$ceez}->{$value}})){
+            $col_to_value_to_most_popular_friends{$ceez}->{$value}=$friends_str;
+        }
+
+    }
+
     for (my $c=0;$c<$n_cols;$c++){
 
         my $val = $record->[$c];
 
-        if($col_to_predicted_cols[$c]){
 
-
-            my @friends;
-            for my $f(@{$col_to_predicted_cols[$c]}){
-                push @friends, $record->[$f];
-            }
-            my $friends_str = freeze(\@friends);
-            $col_to_value_to_friends_str_to_count[$c]->{$val}->{$friends_str}++;
-            my $new_count = $col_to_value_to_friends_str_to_count[$c]->{$val}->{$friends_str};
-            if((not defined $col_to_value_to_most_popular_friends[$c]->{$val}) or ($new_count >= $col_to_value_to_friends_str_to_count[$c]->{$val}->{$col_to_value_to_most_popular_friends[$c]->{$val}})){
-                $col_to_value_to_most_popular_friends[$c]->{$val}=$friends_str;
-            }
-
-        }
         #warn "skipping col 5???" if $col_was_predicted{$c} and $c==5;
         next if $col_was_predicted{$c};
         #my $bits;
@@ -532,7 +547,7 @@ for (my $r=0;$r<=$#records;$r++){
 }
 
 
-#warn Dumper \@col_to_value_to_most_popular_friends;
+#warn Dumper \%col_to_value_to_most_popular_friends;
 
 close INPUT_SAVE;
 close INDEX;
