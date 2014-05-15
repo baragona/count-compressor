@@ -64,6 +64,7 @@ my @predictors=(
     [qw(dma)]  => [qw(state ctry)],
     [qw(state)] => [qw(ctry)],
     [qw(sid pbmid ctry)]  => [qw(mid)],
+    #[qw(sid)]  => [qw(mid)],
 );
 
 my @predictor_cols;
@@ -82,7 +83,14 @@ for (my $i=0; $i<= $#predictors/2; $i++){
     $col_to_predicted_cols{$left} = [sort {$a <=> $b} map {$field_name_to_col{$_}} @{$predictors[2*$i+1]}];
 }
 
+my @sort_order;
+# for (my $c=0;$c<$n_cols;$c++){
+#     if($col_is_used_as_a_predictor[$c]){
+#         push @sort_order, $c;
+#     }
+# }
 
+@sort_order = map {$field_name_to_col{$_}} qw(ip uuid sid datetime);
 
 
 #warn Dumper \@col_is_used_as_a_predictor;exit;
@@ -163,12 +171,7 @@ while(<>){
 
 #warn Dumper \@col_to_max_length;
 
-my @sort_order;
-for (my $c=0;$c<$n_cols;$c++){
-    if($col_is_used_as_a_predictor[$c]){
-        push @sort_order, $c;
-    }
-}
+
 
 
 for (my $c=0;$c<$n_cols;$c++){
@@ -235,7 +238,7 @@ for (my $c=0;$c<$n_cols;$c++){
     my @used_chars = keys %{$fields_to_char_to_pop[$c]};
 
     if($#used_chars <= 128){
-        @used_chars = sort {$a cmp $b} @used_chars;
+        @used_chars = sort {$fields_to_char_to_pop[$c]->{$b} <=> $fields_to_char_to_pop[$c]->{$a}} @used_chars;
 
         $col_to_alphabet[$c]=join '', @used_chars;
 
@@ -244,6 +247,7 @@ for (my $c=0;$c<$n_cols;$c++){
 }
 
 open BINARY, ">BINARY";
+open BINARY2, ">BINARY2";
 open INDEX, ">INDEX";
 {
     local $Data::Dumper::Indent=0;
@@ -315,6 +319,9 @@ my @col_to_currently_stored_val_hash;
 my %col_to_value_to_friends_str_to_count;
 my %col_to_value_to_most_popular_friends;
 
+my %col_to_friends_str_to_count;
+my %col_to_most_popular_friends;
+
 my $rows_with_deletes=0;
 my $rows_with_copies=0;
 my $rows_with_refs=0;
@@ -362,13 +369,20 @@ for (my $r=0;$r<=$#records;$r++){
 
             my $value = freeze([map {$record->[$_]} @ceez_refers]);
 
-            if(not exists $col_to_value_to_most_popular_friends{$ceez}->{$value}){
-                #warn "predictor IMPOSSIBRU\n";
-                $predictor_used_bit='0';
+            my $friends_str;
+            my $which;
+            if(exists $col_to_value_to_most_popular_friends{$ceez}->{$value}){
+                $friends_str = $col_to_value_to_most_popular_friends{$ceez}->{$value};
+                $which="normal";
+            }elsif(exists $col_to_most_popular_friends{$ceez}){
+                $friends_str = $col_to_most_popular_friends{$ceez};
+                $which = "default";
             }else{
 
+            }
 
-                my @friends = @{thaw $col_to_value_to_most_popular_friends{$ceez}->{$value}};
+            if(defined $friends_str){
+                my @friends = @{thaw $friends_str};
                 my $matches=1;
                 my $ci=0;
                 PREDICTED_COL: for my $cc(@predicted_cols){
@@ -384,6 +398,8 @@ for (my $r=0;$r<=$#records;$r++){
                 if($matches){
                     #warn "predictor match. col $c predicts $#predicted_cols+1 cols...\n";
                     die "LOLWAT" if $r==0;
+                    #warn "Ding" if $which eq 'default';
+                    #warn " dong" if $which eq 'normal';
                     for my $cc(@predicted_cols){
                         $col_was_predicted{$cc}=1;
                     }
@@ -395,6 +411,9 @@ for (my $r=0;$r<=$#records;$r++){
                     #warn "predictor MISMATCH col $c\n";
                     $predictor_used_bit='0';
                 }
+            }else{
+                warn "predictor IMPOSSIBRU\n";
+                $predictor_used_bit='0';
             }
             $predictor_bits .= $predictor_used_bit;
         }
@@ -422,6 +441,11 @@ for (my $r=0;$r<=$#records;$r++){
             $col_to_value_to_most_popular_friends{$ceez}->{$value}=$friends_str;
         }
 
+        $col_to_friends_str_to_count{$ceez}->{$friends_str}++;
+        $new_count = $col_to_friends_str_to_count{$ceez}->{$friends_str};
+        if((not defined $col_to_most_popular_friends{$ceez}) or ($new_count >= $col_to_friends_str_to_count{$ceez}->{$col_to_most_popular_friends{$ceez}})){
+            $col_to_most_popular_friends{$ceez}=$friends_str;
+        }
     }
 
     for (my $c=0;$c<$n_cols;$c++){
@@ -534,14 +558,14 @@ for (my $r=0;$r<=$#records;$r++){
 #     $n_bytes++ if $n_bits % 8;
 #     my $bytes = count::bitstring_to_bytes($bitstring);
     #warn "ROW $r: $encoding_list\n";
-    my $bytes = count::bitstring_to_bytes($row_header_bits).count::bitstring_to_bytes($row_lit_length_bits).count::bitstring_to_bytes($row_value_bits);
+    my $bytes = count::bitstring_to_bytes($row_header_bits).count::bitstring_to_bytes($row_lit_length_bits);
 
     #warn "$n_bits,$bitstring ".length($bytes)." $n_bytes\n" if length($bytes) != $n_bytes;
     #print "$bitstring\n";
     die "too effing long" if length($bytes) > 255;
     #print BINARY chr(length($bytes));
     print BINARY $bytes;
-
+    print BINARY2 count::bitstring_to_bytes($row_value_bits);
 
 
 }
@@ -552,29 +576,32 @@ for (my $r=0;$r<=$#records;$r++){
 close INPUT_SAVE;
 close INDEX;
 close BINARY;
+close BINARY2;
 
 my $input_size = (-s 'INPUT_SAVE');
 my $index_size = (-s 'INDEX');
 my $binary_size = (-s 'BINARY');
+my $binary2_size = (-s 'BINARY2');
 
 `bzip2 -kf INPUT_SAVE`;
 `bzip2 -kf INDEX`;
 `bzip2 -kf BINARY`;
-
+`bzip2 -kf BINARY2`;
 
 my $input_bz2_size = (-s 'INPUT_SAVE.bz2');
 my $index_bz2_size = (-s 'INDEX.bz2');
 my $binary_bz2_size = (-s 'BINARY.bz2');
-
+my $binary2_bz2_size = (-s 'BINARY2.bz2');
 print "INPUT SIZE:\t$input_size\n";
 print "INPUT Bz2:\t$input_bz2_size\n";
 print "INDEX Bz2:\t$index_bz2_size\n";
 print "BINARY Bz2:\t$binary_bz2_size\n";
-
+print "BINARY2 Bz2:\t$binary2_bz2_size\n";
 printf "Index  compressibility:\t%f\n", ($index_size/$index_bz2_size);
 printf "Binary compressibility:\t%f\n", ($binary_size/$binary_bz2_size);
-printf "Total Bz2 Output Size:\t%d\n", $binary_bz2_size+$index_bz2_size;
-printf "Savings ratio: %f\n", $input_bz2_size/($binary_bz2_size+$index_bz2_size);
+printf "Binary2 compressibility:\t%f\n", ($binary2_size/$binary2_bz2_size);
+printf "Total Bz2 Output Size:\t%d\n", $binary_bz2_size+$index_bz2_size+$binary2_bz2_size;
+printf "Savings ratio: %f\n", $input_bz2_size/($binary_bz2_size+$index_bz2_size+$binary2_bz2_size);
 
 print "$rows_with_deletes rows have deletes\n";
 print "$rows_with_copies rows have copies\n";

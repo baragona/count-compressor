@@ -10,10 +10,11 @@ use count;
 
 use Storable qw(store_fd nstore_fd freeze thaw);
 
-my ($index_file, $binary_file) = @ARGV;
+my ($index_file, $binary_file, $binary2_file) = @ARGV;
 
 open INDEX, "<",  $index_file or die "cant open:$!";
-open BINARY, "<",  $binary_file or die "cant open:$!";
+open my $BINARY, "<",  $binary_file or die "cant open:$!";
+open my $BINARY2, "<",  $binary2_file or die "cant open:$!";
 $/ = undef;
 my $index=eval <INDEX> or die "cant eval index: $@";
 close INDEX;
@@ -56,11 +57,19 @@ my @col_to_stored_vals;
 my @previous_row;
 my %col_to_value_to_friends_str_to_count;
 my %col_to_value_to_most_popular_friends;
+my %col_to_friends_str_to_count;
+my %col_to_most_popular_friends;
 
-my $bitstring_buffer='';
-my $total_bits_read=0;
+my %bitstring_buffers;
+my %total_bits_reads;
 sub read_bits{
+    my $stream=shift;
     my $n_bits=shift;
+
+    my $bitstring_buffer = $bitstring_buffers{$stream};
+    $bitstring_buffer = '' unless defined $bitstring_buffer;
+    my $total_bits_read = $total_bits_reads{$stream};
+    $total_bits_read = 0 unless $total_bits_read;
 
     if($n_bits > length($bitstring_buffer)){
         my $n_bits_to_read = $n_bits - length($bitstring_buffer);
@@ -68,24 +77,33 @@ sub read_bits{
         $n_bytes++ if $n_bits_to_read % 8;
 
         my $data_read;
-        read(BINARY, $data_read, $n_bytes) == $n_bytes or die "Couldn't read enough data.";
+        read($stream, $data_read, $n_bytes) == $n_bytes or die "Couldn't read enough data.";
         $bitstring_buffer .= count::bytes_to_bitstring($data_read);
     }
 
     my $bits_to_return = substr($bitstring_buffer, 0, $n_bits);
     $bitstring_buffer = substr($bitstring_buffer, $n_bits);
     $total_bits_read += length($bits_to_return);
+
+    $bitstring_buffers{$stream}=$bitstring_buffer;
+    $total_bits_reads{$stream}=$total_bits_read;
+
+
     return $bits_to_return;
 }
 
 sub stream_finished{
+    my $stream=shift;
+    my $bitstring_buffer = $bitstring_buffers{$stream};
+    $bitstring_buffer = '' unless defined $bitstring_buffer;
     return 0 if length($bitstring_buffer);
 
     my $byte;
-    my $n_read = read(BINARY, $byte, 1);
+    my $n_read = read($stream, $byte, 1);
 
     if($n_read){
         $bitstring_buffer .= count::bytes_to_bitstring($byte);
+        $bitstring_buffers{$stream}=$bitstring_buffer;
         return 0;
     }else{
         return 1;
@@ -94,13 +112,16 @@ sub stream_finished{
 }
 
 sub seek_till_byte_boundary{
-    read_bits(8-($total_bits_read %8)) if ($total_bits_read %8)>0;
+    my $stream=shift;
+    my $total_bits_read = $total_bits_reads{$stream};
+    $total_bits_read = 0 unless $total_bits_read;
+    read_bits($stream, 8-($total_bits_read %8)) if ($total_bits_read %8)>0;
 }
 
 
 
 my $r=-1;
-while(not stream_finished){
+while(not stream_finished($BINARY)){
     $r++;
     #my $next_bit=0;
     my %col_was_predicted;
@@ -117,7 +138,7 @@ while(not stream_finished){
             }
         }
         if($need_predictor_bit){
-            my $predictor_bit = read_bits(1);
+            my $predictor_bit = read_bits($BINARY,1);
             #warn "$predictor_bit\n";
             if($predictor_bit){
                 #predicted
@@ -149,15 +170,15 @@ while(not stream_finished){
     for (my $c=0;$c<$n_cols;$c++){
         next if $col_was_predicted{$c};
 
-        my $copy_bit = read_bits(1);
+        my $copy_bit = read_bits($BINARY,1);
         $copy_bits[$c]=$copy_bit;
 
         $encoding_list .= "COPY  " if $copy_bit;;
 
         if($copy_bit != 1){
-            $encoding_choice_bits[$c] = read_bits(1);
+            $encoding_choice_bits[$c] = read_bits($BINARY,1);
             if($encoding_choice_bits[$c]){
-                $do_store_bits[$c]=read_bits(1);
+                $do_store_bits[$c]=read_bits($BINARY,1);
             }
 
             if($encoding_choice_bits[$c]){
@@ -170,7 +191,7 @@ while(not stream_finished){
 
     #warn "ROW $r: $encoding_list\n";
 
-    seek_till_byte_boundary();
+    seek_till_byte_boundary($BINARY);
 
     my @literal_lengths;
 
@@ -178,11 +199,11 @@ while(not stream_finished){
         next if $col_was_predicted{$c};
         if($encoding_choice_bits[$c]){
             my $length_length = count::log2_int($col_to_max_length[$c]);
-            $literal_lengths[$c] = read_bits($length_length);
+            $literal_lengths[$c] = read_bits($BINARY,$length_length);
         }
     }
 
-    seek_till_byte_boundary();
+    seek_till_byte_boundary($BINARY);
 
     for (my $c=0;$c<$n_cols;$c++){
         my $val;
@@ -205,7 +226,7 @@ while(not stream_finished){
 
                 if($encoding_choice_bit==0){
                     my $stored_value_length = count::log2_int($#{$col_to_stored_vals[$c]});
-                    my $stored_val_bits = read_bits($stored_value_length);
+                    my $stored_val_bits = read_bits($BINARY2,$stored_value_length);
                     my $stored_val_idx = oct("0b$stored_val_bits");
                     $val = $col_to_stored_vals[$c]->[$stored_val_idx];
                 }elsif($encoding_choice_bit==1){
@@ -217,11 +238,11 @@ while(not stream_finished){
                         my $bits_per_char=$col_to_literal_bits[$c];
                         $val='';
                         for (my $i=0;$i<$length;$i++){
-                            my $bits = read_bits($bits_per_char);
+                            my $bits = read_bits($BINARY2,$bits_per_char);
                             $val .= $col_to_alpha_idx_to_char[$c]->[oct("0b$bits")];
                         }
                     }else{
-                        $val = read_bits($length*8);
+                        $val = read_bits($BINARY2,$length*8);
                         $val = count::bitstring_to_bytes($val);
                     }
 
@@ -254,6 +275,10 @@ while(not stream_finished){
 
     }
 
+    seek_till_byte_boundary($BINARY2);
+    seek_till_byte_boundary($BINARY);
+
+    #warn Dumper \%bitstring_buffers;
 
     #warn Dumper \@vals;
     for my $ceez(@predictor_cols){
@@ -265,8 +290,14 @@ while(not stream_finished){
             #warn encode_json [map {$vals[$_]} @ceez_refers];
             my $value = freeze([map {$vals[$_]} @ceez_refers]);
             #warn $value;
-            my @friends = @{thaw $col_to_value_to_most_popular_friends{$ceez}->{$value}};
-
+            my @friends;
+            if(exists $col_to_value_to_most_popular_friends{$ceez}->{$value}){
+                @friends = @{thaw $col_to_value_to_most_popular_friends{$ceez}->{$value}};
+            }elsif(exists $col_to_most_popular_friends{$ceez}){
+                @friends = @{thaw $col_to_most_popular_friends{$ceez}};
+            }else{
+                die "You're just unpredictable.";
+            }
             my $ci=0;
             for my $cc(@{$col_to_predicted_cols{$ceez}}){
 
@@ -298,6 +329,11 @@ while(not stream_finished){
         if((not defined $col_to_value_to_most_popular_friends{$ceez}->{$value}) or ($new_count >= $col_to_value_to_friends_str_to_count{$ceez}->{$value}->{$col_to_value_to_most_popular_friends{$ceez}->{$value}})){
             $col_to_value_to_most_popular_friends{$ceez}->{$value}=$friends_str;
         }
+        $col_to_friends_str_to_count{$ceez}->{$friends_str}++;
+        $new_count = $col_to_friends_str_to_count{$ceez}->{$friends_str};
+        if((not defined $col_to_most_popular_friends{$ceez}) or ($new_count >= $col_to_friends_str_to_count{$ceez}->{$col_to_most_popular_friends{$ceez}})){
+            $col_to_most_popular_friends{$ceez}=$friends_str;
+        }
     }
 
     for (my $c=0;$c<$n_cols;$c++){
@@ -316,7 +352,7 @@ while(not stream_finished){
 
     #warn $bitstring;
     print ((join "\t", @vals)."\n");
-    seek_till_byte_boundary();
+
 }
 
 #warn Dumper \%col_to_value_to_most_popular_friends;
