@@ -53,11 +53,12 @@ warn Dumper \%field_name_to_col;
 my @predictors=(
 
     [qw(uuid)] => [qw(sid ip ev cookied ctry state dma browser device os inmarket_clk inmarket_act inmarket_rt gender)],
-    [qw(ip)]   => [qw(ev cookied ctry state dma browser device os)],
+    [qw(ip)]   => [qw(ev cookied ctry state dma browser device os inmarket_clk inmarket_act inmarket_rt gender)],
     [qw(sid)]  => [qw(ctry browser)],
-
+    [qw(sid)]  => [qw(gender)],
+    [qw(inmarket_clk)]  => [qw(inmarket_act inmarket_rt)],
     #pbmid => [qw(mid)],
-    #cookied => [qw(os browser device)],
+    [qw(cookied)] => [qw(os browser device)],
     #[qw(browser)] => [qw(device)],
     #device => [qw(os browser)],
     [qw(os)]   => [qw(browser)],
@@ -76,7 +77,7 @@ my @col_is_used_as_a_predictor;
 for (my $i=0; $i<= $#predictors/2; $i++){
 
     my $left = join '-', map {$field_name_to_col{$_}} @{$predictors[2*$i]};
-
+    $left .=sprintf("_%03d",$i);
     map {$col_is_used_as_a_predictor[$field_name_to_col{$_}] = 1} @{$predictors[2*$i]};
 
     push @predictor_cols, $left;
@@ -365,7 +366,7 @@ for (my $r=0;$r<=$#records;$r++){
         if($need_predictor_bit){
             my $predictor_used_bit;
 
-            my @ceez_refers = split /-/, $ceez;
+            my @ceez_refers = split /-/, substr($ceez,0,-4);
 
             my $value = freeze([map {$record->[$_]} @ceez_refers]);
 
@@ -426,7 +427,7 @@ for (my $r=0;$r<=$#records;$r++){
     $row_header_bits .= $predictor_bits;
 
     for my $ceez(@predictor_cols){
-        my @ceez_refers = split /-/, $ceez;
+        my @ceez_refers = split /-/, substr($ceez,0,-4);
 
         my $value = freeze([map {$record->[$_]} @ceez_refers]);
 

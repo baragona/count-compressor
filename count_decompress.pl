@@ -286,7 +286,7 @@ while(not stream_finished($BINARY)){
         if($predictor_column_used{$ceez}){
             #warn Dumper \@col_to_value_to_last_seen_friends;
             #warn "colums $ceez is a predictor col, it should have a value";
-            my @ceez_refers = split /-/, $ceez;
+            my @ceez_refers = split /-/, substr($ceez,0,-4);
             #warn encode_json [map {$vals[$_]} @ceez_refers];
             my $value = freeze([map {$vals[$_]} @ceez_refers]);
             #warn $value;
@@ -315,7 +315,7 @@ while(not stream_finished($BINARY)){
     }
 
     for my $ceez(@predictor_cols){
-        my @ceez_refers = split /-/, $ceez;
+        my @ceez_refers = split /-/, substr($ceez,0,-4);
 
         my $value = freeze([map {$vals[$_]} @ceez_refers]);
         my @friends_i = @{$col_to_predicted_cols{$ceez}};
