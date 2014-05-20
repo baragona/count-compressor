@@ -150,5 +150,73 @@ sub datetime_from_integer{
 
 }
 
+sub round {
+  $_[0] > 0 ? int($_[0] + .5) : -int(-$_[0] + .5)
+}
+
+sub log2{
+    return log(shift())/log(2);
+}
+
+#print count::rice_bits(64,1000000) => 47
+sub rice_bits{
+    my $size_bits=shift;
+    my $count=shift;
+
+    return $size_bits - round(log2($count));
+
+    #return (2.0**(-$size_bits));
+    #return round(log2(-1.0/log2(1-($count*(2**(-$size_bits))))));
+
+}
+
+sub to_rice{
+    use integer;
+    my $x=shift;
+    my $k=shift;
+    #my $m = 1 << $k;
+	#my $q = $x / $m;
+	my $q = $x >> $k;
+	my $i;
+
+    my $bits='';
+
+	for ($i=0; $i<$q; $i++){ $bits .= '1'; }
+	$bits .= '0';
+
+	for ($i=$k-1; $i>=0; $i--) { $bits .=  ($x >> $i) & 1;}
+
+	return $bits;
+}
+
+sub from_rice{
+    my $get_bit_f = shift;
+    my $k = shift;
+    my $m = 1 << $k;
+    my $q = 0;
+    my $x;
+    my $i;
+
+    while ($get_bit_f->()) {$q++;}
+    $x = $m * $q;
+
+    for ($i=$k-1; $i>=0; $i--) {$x = $x | ($get_bit_f->() << $i);}
+
+    return $x;
+}
+
+# void rice_code(unsigned char x, int k)
+# {
+# 	int m = 1 << k;
+# 	int q = x / m;
+# 	int i;
+#
+# 	for (i=0; i<q; i++) put_bit(1);
+# 	put_bit(0);
+#
+# 	for (i=k-1; i>=0; i--) put_bit( (x >> i) & 1 );
+# }
+
+
 
 1;

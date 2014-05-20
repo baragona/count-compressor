@@ -59,6 +59,9 @@ my %col_to_value_to_friends_str_to_count;
 my %col_to_value_to_most_popular_friends;
 my %col_to_friends_str_to_count;
 my %col_to_most_popular_friends;
+my @col_to_ref_count;
+my @col_to_ref_sum;
+
 
 my %bitstring_buffers;
 my %total_bits_reads;
@@ -225,10 +228,20 @@ while(not stream_finished($BINARY)){
                 my $encoding_choice_bit = $encoding_choice_bits[$c];
 
                 if($encoding_choice_bit==0){
-                    my $stored_value_length = count::log2_int($#{$col_to_stored_vals[$c]});
-                    my $stored_val_bits = read_bits($BINARY2,$stored_value_length);
-                    my $stored_val_idx = oct("0b$stored_val_bits");
+                    #my $stored_value_length = count::log2_int($#{$col_to_stored_vals[$c]});
+                    #my $stored_val_bits = read_bits($BINARY2,$stored_value_length);
+                    #my $stored_val_idx = oct("0b$stored_val_bits");
+
+
+                    my $rice_bits = ($col_to_ref_count[$c]>0 and $col_to_ref_sum[$c]) ? int(count::log2($col_to_ref_sum[$c]/$col_to_ref_count[$c])) : count::log2_int($#{$col_to_stored_vals[$c]}/2);
+                    $rice_bits = 0 if $rice_bits < 0;
+                    my $stored_val_idx = count::from_rice(sub {read_bits($BINARY2,1)}, $rice_bits);
                     $val = $col_to_stored_vals[$c]->[$stored_val_idx];
+
+                    $col_to_ref_sum[$c]+=$stored_val_idx;
+                    $col_to_ref_count[$c]++;
+
+
                 }elsif($encoding_choice_bit==1){
                     my $length = $literal_lengths[$c];
                     $length = oct("0b$length");
@@ -260,10 +273,6 @@ while(not stream_finished($BINARY)){
 
 
 
-                #my $bits = substr($bitstring, $next_bit, $col_to_bits[$c]);
-                #$next_bit += $col_to_bits[$c];
-                #my $idx = oct("0b$bits");
-                #my $val = $col_to_sorted_keys[$c]->[$idx];
 
                 warn "read funky datetime!" if($c==5 and $val =~ /\D/);
 

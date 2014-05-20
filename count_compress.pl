@@ -52,8 +52,12 @@ warn Dumper \%field_name_to_col;
 
 my @predictors=(
 
-    [qw(uuid)] => [qw(sid ip ev cookied ctry state dma browser device os inmarket_clk inmarket_act inmarket_rt gender)],
-    [qw(ip)]   => [qw(ev cookied ctry state dma browser device os inmarket_clk inmarket_act inmarket_rt gender)],
+    [qw(uuid)] => [qw(ip sid ev cookied browser device os inmarket_clk inmarket_act inmarket_rt gender)],
+    [qw(uuid)] => [qw(browser device os inmarket_clk inmarket_act inmarket_rt gender)],
+    #[qw(uuid)] => [qw(ip ev cookied ctry state dma browser device os inmarket_clk inmarket_act inmarket_rt gender)],
+    [qw(uuid)] => [qw(cookied browser device os)],
+    [qw(ip)]   => [qw(sid ev cookied ctry state dma browser device os inmarket_clk inmarket_act inmarket_rt gender)],
+    [qw(ip)]   => [qw(ctry state dma)],
     [qw(sid)]  => [qw(ctry browser)],
     [qw(sid)]  => [qw(gender)],
     [qw(inmarket_clk)]  => [qw(inmarket_act inmarket_rt)],
@@ -73,15 +77,17 @@ my @predictor_cols;
 my %col_to_predicted_cols;
 
 my @col_is_used_as_a_predictor;
+my @col_can_ever_be_predicted;
 
 for (my $i=0; $i<= $#predictors/2; $i++){
 
     my $left = join '-', map {$field_name_to_col{$_}} @{$predictors[2*$i]};
     $left .=sprintf("_%03d",$i);
     map {$col_is_used_as_a_predictor[$field_name_to_col{$_}] = 1} @{$predictors[2*$i]};
-
+    die "A lower level predictor CANNOT predict the driving column of a higher level one." if grep {$col_is_used_as_a_predictor[$_] } (map {$field_name_to_col{$_}} @{$predictors[2*$i+1]});
     push @predictor_cols, $left;
     $col_to_predicted_cols{$left} = [sort {$a <=> $b} map {$field_name_to_col{$_}} @{$predictors[2*$i+1]}];
+    map {$col_can_ever_be_predicted[$field_name_to_col{$_}] = 1} @{$predictors[2*$i+1]};
 }
 
 my @sort_order;
@@ -91,10 +97,10 @@ my @sort_order;
 #     }
 # }
 
-@sort_order = map {$field_name_to_col{$_}} qw(ip uuid sid datetime);
+#@sort_order = map {$field_name_to_col{$_}} qw(ip uuid sid datetime);
 
 
-#warn Dumper \@col_is_used_as_a_predictor;exit;
+#warn Dumper \@col_can_ever_be_predicted;exit;
 
 my $i=0;
 
@@ -171,13 +177,23 @@ while(<>){
 }
 
 #warn Dumper \@col_to_max_length;
+my @unpredictable_cols;
+my @col_to_uniques;
+for (my $c=0;$c<$n_cols;$c++){
+    $col_to_uniques[$c]=scalar (keys %{$fields_to_vals[$c]});
+    #push @unpredictable_cols, $c unless
 
+    warn "col\t$c\t$col_to_uniques[$c] uniques\n";
 
+}
 
 
 for (my $c=0;$c<$n_cols;$c++){
-    push @sort_order, $c unless grep {$c == $_} @sort_order;
+    #push @sort_order, $c unless grep {$c == $_} @sort_order;
 }
+
+@sort_order = sort {$col_to_uniques[$b] <=> $col_to_uniques[$a]} (0..($n_cols-1));
+
 warn Dumper \@sort_order;
 
 my $sort_function = join " or ", (map {"(\$a->[$_] cmp \$b->[$_])"} @sort_order);
@@ -214,6 +230,8 @@ my @col_to_bits;
 
 my @col_to_alphabet;
 
+
+
 for (my $c=0;$c<$n_cols;$c++){
     my $is_numeric=1;
     my @sorted_keys = sort {$fields_to_vals[$c]->{$b} cmp $fields_to_vals[$c]->{$a}} keys %{$fields_to_vals[$c]};
@@ -244,6 +262,8 @@ for (my $c=0;$c<$n_cols;$c++){
         $col_to_alphabet[$c]=join '', @used_chars;
 
     }
+
+
 
 }
 
@@ -323,6 +343,11 @@ my %col_to_value_to_most_popular_friends;
 my %col_to_friends_str_to_count;
 my %col_to_most_popular_friends;
 
+my @col_to_last_ref_idx;
+my @col_to_ref_sum;
+my @col_to_ref_count;
+
+
 my $rows_with_deletes=0;
 my $rows_with_copies=0;
 my $rows_with_refs=0;
@@ -355,6 +380,7 @@ for (my $r=0;$r<=$#records;$r++){
     for my $ceez(@predictor_cols){
 
         #check if you need to store a predictor used bit. if everything it would have predicted is already predicted, there is no need.
+        #if there are no friends for this value, also, no need.
         my $need_predictor_bit=0;
         my @predicted_cols = @{$col_to_predicted_cols{$ceez}};
         CC: for my $cc(@predicted_cols){
@@ -449,15 +475,9 @@ for (my $r=0;$r<=$#records;$r++){
         }
     }
 
-    for (my $c=0;$c<$n_cols;$c++){
-
+    my $encode_col = sub {
+        my $c=shift;
         my $val = $record->[$c];
-
-
-        #warn "skipping col 5???" if $col_was_predicted{$c} and $c==5;
-        next if $col_was_predicted{$c};
-        #my $bits;
-
         my $copy_bit=0;
         if($r!=0 and $val eq $records[$r-1]->[$c]){
             $copy_bit=1;
@@ -475,11 +495,18 @@ for (my $r=0;$r<=$#records;$r++){
                 $encoding_choice_bit=0;
                 $encoding_list .= "REF";
                 $row_encoding_has_a_ref=1;
-                $value_bits = count::binary_digits($col_to_currently_stored_val_hash[$c]->{$val}, count::log2_int($#{$col_to_currently_stored_val_list[$c]}));
+
+                my $last_ref_idx = ($col_to_last_ref_idx[$c] or 1);
+                #my $rice_bits=count::log2_int($#{$col_to_currently_stored_val_list[$c]}/8);
+                my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ? int(count::log2($col_to_ref_sum[$c]/$col_to_ref_count[$c])) : count::log2_int($#{$col_to_currently_stored_val_list[$c]}/2);
+                $rice_bits = 0 if $rice_bits < 0;
+                $value_bits = count::to_rice($col_to_currently_stored_val_hash[$c]->{$val}, $rice_bits);
                 #warn "col $c used stored val $col_to_currently_stored_val_hash[$c]->{$val} of $#{$col_to_currently_stored_val_list[$c]}\n";
 
                 #print {$reference_files[0]} count::bitstring_to_bytes($value_bits);
-
+                $col_to_last_ref_idx[$c]=$col_to_currently_stored_val_hash[$c]->{$val};
+                $col_to_ref_sum[$c]+=$col_to_currently_stored_val_hash[$c]->{$val};
+                $col_to_ref_count[$c]++;
             }else{
                 $encoding_choice_bit=1;
                 $encoding_list .= "LIT";
@@ -528,7 +555,12 @@ for (my $r=0;$r<=$#records;$r++){
         }
 
         #$bitstring .= $bits;
+    };
 
+    for (my $c=0;$c<$n_cols;$c++){
+        next if $col_was_predicted{$c};
+
+        $encode_col->($c);
 
 
     }
@@ -571,6 +603,9 @@ for (my $r=0;$r<=$#records;$r++){
 
 }
 
+for (my $c=0;$c<$n_cols;$c++){
+    warn "Col $c: ".($#{$col_to_currently_stored_val_list[$c]}+1)." stored values.\tRefs: $col_to_ref_count[$c]\tAvg ref:".(eval{$col_to_ref_sum[$c]/$col_to_ref_count[$c]})."\n";
+}
 
 #warn Dumper \%col_to_value_to_most_popular_friends;
 
