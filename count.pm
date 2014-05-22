@@ -97,6 +97,14 @@ sub ip_unbinarize{
     return $ip;
 }
 
+sub chop_seconds_from_datetime{
+    my $datetime=shift;
+    chop $datetime;
+    chop $datetime;
+    $datetime .= "00";
+    return $datetime;
+}
+
 sub datetime_to_integer{
     my $datetime=shift;
     #2014-04-29 23:50:01
@@ -217,6 +225,33 @@ sub from_rice{
 # 	for (i=k-1; i>=0; i--) put_bit( (x >> i) & 1 );
 # }
 
+
+sub str2num{
+    #use bigint;
+    my $sum=0;
+    for my $c(split //, shift()){
+        $sum <<= 8;
+        $sum+=ord($c);
+    }
+    return $sum;
+}
+
+sub num2str{
+    #use bigint;
+    my $num=shift;
+    my $bytes=shift;
+
+
+    my $str='';
+    while($num){
+        $str = chr($num & 0xFF)."$str";
+        $num >>= 8;
+    }
+    if(length($str)<$bytes){
+        $str = (chr(0) x ($bytes-length($str))) . $str;
+    }
+    return $str;
+}
 
 
 1;

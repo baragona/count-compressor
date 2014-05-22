@@ -233,7 +233,7 @@ while(not stream_finished($BINARY)){
                     #my $stored_val_idx = oct("0b$stored_val_bits");
 
 
-                    my $rice_bits = ($col_to_ref_count[$c]>0 and $col_to_ref_sum[$c]) ? int(count::log2($col_to_ref_sum[$c]/$col_to_ref_count[$c])) : count::log2_int($#{$col_to_stored_vals[$c]}/2);
+                    my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ? int(count::log2($col_to_ref_sum[$c]/$col_to_ref_count[$c])) : count::log2_int($#{$col_to_stored_vals[$c]}/2);
                     $rice_bits = 0 if $rice_bits < 0;
                     my $stored_val_idx = count::from_rice(sub {read_bits($BINARY2,1)}, $rice_bits);
                     $val = $col_to_stored_vals[$c]->[$stored_val_idx];

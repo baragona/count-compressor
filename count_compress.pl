@@ -141,6 +141,9 @@ while(<>){
     warn "BAD UUID '$uuid' " unless lc $uuid eq  lc count::uuid_unbinarize(count::uuid_binarize($uuid));
     $uuid = count::shorten_uuid($uuid);
     $fields[7] = $uuid;
+
+    $fields[5] = count::chop_seconds_from_datetime($fields[5]);
+
     #warn Dumper \@fields;
 
     print INPUT_SAVE ((join "\t", @fields)."\n");
@@ -501,6 +504,7 @@ for (my $r=0;$r<=$#records;$r++){
                 my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ? int(count::log2($col_to_ref_sum[$c]/$col_to_ref_count[$c])) : count::log2_int($#{$col_to_currently_stored_val_list[$c]}/2);
                 $rice_bits = 0 if $rice_bits < 0;
                 $value_bits = count::to_rice($col_to_currently_stored_val_hash[$c]->{$val}, $rice_bits);
+                #$value_bits='';
                 #warn "col $c used stored val $col_to_currently_stored_val_hash[$c]->{$val} of $#{$col_to_currently_stored_val_list[$c]}\n";
 
                 #print {$reference_files[0]} count::bitstring_to_bytes($value_bits);
@@ -604,6 +608,7 @@ for (my $r=0;$r<=$#records;$r++){
 }
 
 for (my $c=0;$c<$n_cols;$c++){
+    no warnings;
     warn "Col $c: ".($#{$col_to_currently_stored_val_list[$c]}+1)." stored values.\tRefs: $col_to_ref_count[$c]\tAvg ref:".(eval{$col_to_ref_sum[$c]/$col_to_ref_count[$c]})."\n";
 }
 
