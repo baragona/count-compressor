@@ -357,6 +357,8 @@ my %col_to_value_to_most_popular_friends;
 my %col_to_friends_str_to_count;
 my %col_to_most_popular_friends;
 
+
+
 my @col_to_last_ref_idx;
 my @col_to_ref_sum;
 my @col_to_ref_count;
@@ -383,6 +385,30 @@ for (my $r=0;$r<=$#records;$r++){
     my $row_header_bits='';
     my $row_value_bits='';
     my $row_lit_length_bits='';
+
+
+    my $dupes=0;
+    my $matches=1;
+    for (my $rr=$r+1;$rr<=$#records;$rr++){
+        my $rrecord = $records[$rr];
+        my $row_matches=1;
+        for (my $c=0;$c<$n_cols;$c++){
+            if($record->[$c] ne $rrecord->[$c]){
+                $row_matches=0;
+                last;
+            }
+        }
+        if($row_matches){
+            $dupes++;
+        }else{
+            last;
+        }
+    }
+
+
+
+
+
 
     my %predictor_col_used;
     my %col_was_predicted;
@@ -615,17 +641,15 @@ for (my $r=0;$r<=$#records;$r++){
     if($row_encoding_uses_predictor){
         $rows_using_a_predictor++;
     }
-
     #warn "row header is".length($row_header_bits)." bits\n";
-#     $bitstring = $row_header_bits.$row_value_bits;
-#
-#     my $n_bits = length($bitstring);
-#
-#     my $n_bytes = int($n_bits/8);
-#     $n_bytes++ if $n_bits % 8;
-#     my $bytes = count::bitstring_to_bytes($bitstring);
     #warn "ROW $r: $encoding_list\n";
-    my $bytes = count::bitstring_to_bytes($row_header_bits).count::bitstring_to_bytes($row_lit_length_bits);
+
+
+    $r+=$dupes;
+
+    my $dupes_bits = ('1'x$dupes). '0';
+
+    my $bytes = count::bitstring_to_bytes($row_header_bits).count::bitstring_to_bytes($row_lit_length_bits.$dupes_bits);
 
     #warn "$n_bits,$bitstring ".length($bytes)." $n_bytes\n" if length($bytes) != $n_bytes;
     #print "$bitstring\n";

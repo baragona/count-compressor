@@ -124,10 +124,10 @@ sub seek_till_byte_boundary{
 
 
 
-my $r=-1;
+my $r=0;
 while(not stream_finished($BINARY)){
-    $r++;
-    #my $next_bit=0;
+
+
     my %col_was_predicted;
     my %predictor_column_used;
     for my $ceez(@predictor_cols){
@@ -213,7 +213,10 @@ while(not stream_finished($BINARY)){
         }
     }
 
-
+    my $dupes=1;
+    while(read_bits($BINARY,1)==1){
+        $dupes++;
+    }
 
 
     seek_till_byte_boundary($BINARY);
@@ -386,7 +389,12 @@ while(not stream_finished($BINARY)){
     }
 
     #warn $bitstring;
-    print ((join "\t", @vals)."\n");
+    warn "$dupes\n";
+    while($dupes>0){
+        print ((join "\t", @vals)."\n");
+        $dupes--;
+        $r++;
+    }
 
 }
 
