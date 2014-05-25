@@ -33,7 +33,8 @@ my @col_to_alphabet = @{$index->{col_to_alphabet}};
 
 my %col_to_predicted_cols = %{$index->{col_to_predicted_cols}};
 my @predictor_cols = @{$index->{predictor_cols}};
-
+my $driving_column = $index->{driving_column};
+my $driving_col_rice_bits = $index->{driving_col_rice_bits};
 
 #warn Dumper \@predictor_cols;
 #warn Dumper \%field_name_to_col;
@@ -200,11 +201,20 @@ while(not stream_finished($BINARY)){
 
     for (my $c=0;$c<$n_cols;$c++){
         next if $col_was_predicted{$c};
+
+
         if($encoding_choice_bits[$c]){
-            my $length_length = count::log2_int($col_to_max_length[$c]);
-            $literal_lengths[$c] = read_bits($BINARY,$length_length);
+            if($c == $driving_column and $r!=0){
+            #only encode the difference
+            }else{
+                my $length_length = count::log2_int($col_to_max_length[$c]);
+                $literal_lengths[$c] = read_bits($BINARY,$length_length);
+            }
         }
     }
+
+
+
 
     seek_till_byte_boundary($BINARY);
 
@@ -232,33 +242,49 @@ while(not stream_finished($BINARY)){
                     #my $stored_val_bits = read_bits($BINARY2,$stored_value_length);
                     #my $stored_val_idx = oct("0b$stored_val_bits");
 
-
-                    my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ? int(count::log2($col_to_ref_sum[$c]/$col_to_ref_count[$c])) : count::log2_int($#{$col_to_stored_vals[$c]}/2);
+                    my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ? int(count::log2(($col_to_ref_sum[$c]+$#{$col_to_stored_vals[$c]})/($col_to_ref_count[$c]+1))) : count::log2_int($#{$col_to_stored_vals[$c]}/2);
                     $rice_bits = 0 if $rice_bits < 0;
                     my $stored_val_idx = count::from_rice(sub {read_bits($BINARY2,1)}, $rice_bits);
                     $val = $col_to_stored_vals[$c]->[$stored_val_idx];
+
+
+                    my $swap_with = int((20*$stored_val_idx) / 21);
+
+                    if($swap_with >= 0 and $swap_with != $stored_val_idx){
+                        my $temp = $col_to_stored_vals[$c]->[$stored_val_idx];
+
+                        $col_to_stored_vals[$c]->[$stored_val_idx]=$col_to_stored_vals[$c]->[$swap_with];
+                        $col_to_stored_vals[$c]->[$swap_with]=$temp;
+
+                    }
+
 
                     $col_to_ref_sum[$c]+=$stored_val_idx;
                     $col_to_ref_count[$c]++;
 
 
                 }elsif($encoding_choice_bit==1){
-                    my $length = $literal_lengths[$c];
-                    $length = oct("0b$length");
-
-
-                    if(defined $col_to_literal_bits[$c]){
-                        my $bits_per_char=$col_to_literal_bits[$c];
-                        $val='';
-                        for (my $i=0;$i<$length;$i++){
-                            my $bits = read_bits($BINARY2,$bits_per_char);
-                            $val .= $col_to_alpha_idx_to_char[$c]->[oct("0b$bits")];
-                        }
+                    if($c == $driving_column and $r!=0){
+                        #only encode the difference
+                        my $diff = count::from_rice(sub {read_bits($BINARY2,1)}, $driving_col_rice_bits);
+                        $val = count::num2str(count::str2num($previous_row[$c])+$diff,$col_to_max_length[$driving_column]);
                     }else{
-                        $val = read_bits($BINARY2,$length*8);
-                        $val = count::bitstring_to_bytes($val);
-                    }
+                        my $length = $literal_lengths[$c];
+                        $length = oct("0b$length");
 
+
+                        if(defined $col_to_literal_bits[$c]){
+                            my $bits_per_char=$col_to_literal_bits[$c];
+                            $val='';
+                            for (my $i=0;$i<$length;$i++){
+                                my $bits = read_bits($BINARY2,$bits_per_char);
+                                $val .= $col_to_alpha_idx_to_char[$c]->[oct("0b$bits")];
+                            }
+                        }else{
+                            $val = read_bits($BINARY2,$length*8);
+                            $val = count::bitstring_to_bytes($val);
+                        }
+                    }
 
                     push @{$col_to_stored_vals[$c]}, $val;
 

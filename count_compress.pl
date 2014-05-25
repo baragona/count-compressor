@@ -206,6 +206,15 @@ my $sort_function = join " or ", (map {"(\$a->[$_] cmp \$b->[$_])"} @sort_order)
 eval "\@records = sort {$sort_function} \@records";
 die "sort eval error: $@" if $@;
 
+my $driving_column = $sort_order[0];
+
+my $driving_column_uniques = $col_to_uniques[$driving_column];
+warn "$driving_column_uniques driving column uniques\n";
+
+my $driving_column_size = $col_to_max_length[$driving_column];
+my $driving_col_rice_bits = count::rice_bits($driving_column_size*8, $driving_column_uniques);
+warn "$driving_col_rice_bits driving column rice bits\n";
+
 for (my $c=0;$c<$n_cols;$c++){
 
     for my $val (keys %{$fields_to_vals[$c]}){
@@ -287,6 +296,8 @@ open INDEX, ">INDEX";
         predictor_cols => \@predictor_cols,
         col_to_max_length => \@col_to_max_length,
         col_to_alphabet => \@col_to_alphabet,
+        driving_column => $driving_column,
+        driving_col_rice_bits => $driving_col_rice_bits,
         };
     #print INDEX encode_json \@col_to_sorted_keys;
     #store_fd \@col_to_sorted_keys, \*INDEX;
@@ -500,33 +511,53 @@ for (my $r=0;$r<=$#records;$r++){
                 $row_encoding_has_a_ref=1;
 
                 my $last_ref_idx = ($col_to_last_ref_idx[$c] or 1);
-                #my $rice_bits=count::log2_int($#{$col_to_currently_stored_val_list[$c]}/8);
-                my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ? int(count::log2($col_to_ref_sum[$c]/$col_to_ref_count[$c])) : count::log2_int($#{$col_to_currently_stored_val_list[$c]}/2);
+                my $ref_idx = $col_to_currently_stored_val_hash[$c]->{$val};
+                my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ? int(count::log2(($col_to_ref_sum[$c]+$#{$col_to_currently_stored_val_list[$c]})/($col_to_ref_count[$c]+1))) : count::log2_int($#{$col_to_currently_stored_val_list[$c]}/2);
                 $rice_bits = 0 if $rice_bits < 0;
-                $value_bits = count::to_rice($col_to_currently_stored_val_hash[$c]->{$val}, $rice_bits);
+                $value_bits = count::to_rice($ref_idx, $rice_bits);
                 #$value_bits='';
                 #warn "col $c used stored val $col_to_currently_stored_val_hash[$c]->{$val} of $#{$col_to_currently_stored_val_list[$c]}\n";
 
-                #print {$reference_files[0]} count::bitstring_to_bytes($value_bits);
-                $col_to_last_ref_idx[$c]=$col_to_currently_stored_val_hash[$c]->{$val};
-                $col_to_ref_sum[$c]+=$col_to_currently_stored_val_hash[$c]->{$val};
+                my $swap_with = int((20*$ref_idx) / 21);
+
+                if($swap_with >= 0 and $swap_with != $ref_idx){
+                    my $temp = $col_to_currently_stored_val_list[$c]->[$ref_idx];
+
+                    $col_to_currently_stored_val_list[$c]->[$ref_idx]=$col_to_currently_stored_val_list[$c]->[$swap_with];
+                    $col_to_currently_stored_val_list[$c]->[$swap_with]=$temp;
+
+                    $col_to_currently_stored_val_hash[$c]->{$col_to_currently_stored_val_list[$c]->[$ref_idx]}=$ref_idx;
+                    $col_to_currently_stored_val_hash[$c]->{$col_to_currently_stored_val_list[$c]->[$swap_with]}=$swap_with;
+
+                }
+
+
+                $col_to_last_ref_idx[$c]=$ref_idx;
+                $col_to_ref_sum[$c]+=$ref_idx;
                 $col_to_ref_count[$c]++;
             }else{
                 $encoding_choice_bit=1;
                 $encoding_list .= "LIT";
                 $row_encoding_has_a_lit=1;
-                my $xfrm_val=$val;
-                if(defined $col_to_alphabet[$c]){
-                    $xfrm_val =~ s/(.)/count::binary_digits(index($col_to_alphabet[$c],$1), count::log2_int(length($col_to_alphabet[$c])-1))/gse;
-                    $value_bits=$xfrm_val;
+                if($c == $driving_column and $r!=0){
+                    #only encode the difference
+
+                    $value_bits = count::to_rice(count::str2num($val)-count::str2num($records[$r-1]->[$c]),$driving_col_rice_bits);
+
                 }else{
-                    $value_bits = count::bytes_to_bitstring($xfrm_val);
+                    my $xfrm_val=$val;
+                    if(defined $col_to_alphabet[$c]){
+                        $xfrm_val =~ s/(.)/count::binary_digits(index($col_to_alphabet[$c],$1), count::log2_int(length($col_to_alphabet[$c])-1))/gse;
+                        $value_bits=$xfrm_val;
+                    }else{
+                        $value_bits = count::bytes_to_bitstring($xfrm_val);
+                    }
+                    $row_lit_length_bits .= count::binary_digits(length($val), count::log2_int($col_to_max_length[$c]));
                 }
 
 
-                $row_lit_length_bits .= count::binary_digits(length($val), count::log2_int($col_to_max_length[$c]));
                 #print {$lit_length_files[$c]} count::bitstring_to_bytes(count::binary_digits(length($val), count::log2_int($col_to_max_length[$c])));
-                #print {$literal_files[$c]} $val;
+
 
                 push @{$col_to_currently_stored_val_list[$c]}, $val;
                 $col_to_currently_stored_val_hash[$c]->{$val} = $#{$col_to_currently_stored_val_list[$c]};
@@ -552,7 +583,6 @@ for (my $r=0;$r<=$#records;$r++){
                 }
             }
             #$bits = $copy_bit.$encoding_choice_bit.$do_store_bit.$value_bits;
-            #print {$encoding_files[0]} count::bitstring_to_bytes($copy_bit.$encoding_choice_bit.$do_store_bit);
 
             $row_header_bits.=$copy_bit.$encoding_choice_bit.$do_store_bit;
             $row_value_bits .=$value_bits;
