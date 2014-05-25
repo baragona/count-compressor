@@ -388,8 +388,6 @@ while(not stream_finished($BINARY)){
         }
     }
 
-    #warn $bitstring;
-    warn "$dupes\n";
     while($dupes>0){
         print ((join "\t", @vals)."\n");
         $dupes--;

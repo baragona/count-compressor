@@ -16,7 +16,16 @@ our $ug    = new Data::UUID;
 sub log2_int{
     my $x=shift;
     return 0 if $x < 1;
-    return int(log($x)/log(2))+1;
+    #return int(log($x)/log(2))+1;
+
+    my $mask = 1 << 32;
+    for (my $i=32;$i>=0;$i--){
+
+        return $i+1 if $x & $mask;
+
+        $mask >>=1;
+    }
+
 }
 
 sub binary_digits{
