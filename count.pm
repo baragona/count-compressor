@@ -14,7 +14,7 @@ our $ug    = new Data::UUID;
 
 
 sub log2_int{
-    my $x=shift;
+    my $x=int(shift);
     return 0 if $x < 1;
     #return int(log($x)/log(2))+1;
 

@@ -5,7 +5,7 @@ use strict;
 use Data::Dumper;
 
 #use Digest::SHA qw(sha256);
-
+use Digest::MD5 qw(md5_base64 md5);
 #use Data::UUID;
 
 #my $ug    = new Data::UUID;
@@ -126,6 +126,8 @@ $column_encodings[5]='datetime';
 
 my @col_to_max_length;
 
+my $rows_sum=0;
+
 while(<>){
     $i++;
     $bytes_read += length($_);
@@ -144,9 +146,11 @@ while(<>){
 
     $fields[5] = count::chop_seconds_from_datetime($fields[5]);
 
-    #warn Dumper \@fields;
+    #DONE MODIFYING ROW
+    my $row_string = join "\t", @fields;
+    $rows_sum += count::str2num(substr(md5($row_string),0,3));#first 3 bytes of md5 sum
 
-    print INPUT_SAVE ((join "\t", @fields)."\n");
+    print INPUT_SAVE ($row_string."\n");
 
 
     $fields[7] = count::short_uuid_binarize($fields[7]);
@@ -282,6 +286,9 @@ for (my $c=0;$c<$n_cols;$c++){
 open BINARY, ">BINARY";
 open BINARY2, ">BINARY2";
 open INDEX, ">INDEX";
+
+open CHECKSUMS, ">CHECKSUMS";
+
 {
     local $Data::Dumper::Indent=0;
     local $Data::Dumper::Terse=1;
@@ -298,6 +305,7 @@ open INDEX, ">INDEX";
         col_to_alphabet => \@col_to_alphabet,
         driving_column => $driving_column,
         driving_col_rice_bits => $driving_col_rice_bits,
+        rows_sum => $rows_sum,
         };
     #print INDEX encode_json \@col_to_sorted_keys;
     #store_fd \@col_to_sorted_keys, \*INDEX;

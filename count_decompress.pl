@@ -5,6 +5,7 @@ use strict;
 use Data::Dumper;
 
 use JSON::XS;
+use Digest::MD5 qw(md5_base64 md5);
 
 use count;
 
@@ -36,6 +37,8 @@ my @predictor_cols = @{$index->{predictor_cols}};
 my $driving_column = $index->{driving_column};
 my $driving_col_rice_bits = $index->{driving_col_rice_bits};
 
+my $correct_rows_sum = $index->{rows_sum};
+
 #warn Dumper \@predictor_cols;
 #warn Dumper \%field_name_to_col;
 #exit;
@@ -63,6 +66,7 @@ my %col_to_most_popular_friends;
 my @col_to_ref_count;
 my @col_to_ref_sum;
 
+my $rows_sum=0;
 
 my %bitstring_buffers;
 my %total_bits_reads;
@@ -389,11 +393,19 @@ while(not stream_finished($BINARY)){
     }
 
     while($dupes>0){
-        print ((join "\t", @vals)."\n");
+        my $row_string = (join "\t", @vals);
+        print ($row_string."\n");
+        $rows_sum += count::str2num(substr(md5($row_string),0,3));#first 3 bytes of md5 sum
         $dupes--;
         $r++;
     }
 
+}
+
+if($rows_sum == $correct_rows_sum){
+    warn "Row checksum good\n";
+}else{
+    die "Row checksum BAD: is $rows_sum - should be $correct_rows_sum\n";
 }
 
 #warn Dumper \%col_to_value_to_most_popular_friends;
