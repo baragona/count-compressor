@@ -15,62 +15,24 @@ use JSON::XS;
 
 use count;
 
+my %field_names;
+my $predictor_string;
+my @column_encodings;
+my $driving_column = -1;
+eval `cat regular_count_config.pl` or die "Error reading config file: $!";
 
-#covariant columns. If you know one column, you have a good guess at another column.
 
-#Not all fields need to be named.
-my %field_names = qw(
-    0   mid
-    1   sid
-    2   ev
-    3   ip
-    4   ctry
-    5   datetime
-    6   pbmid
-    7   uuid
-    8   cookied
-    9   hostnum
-    10  os
-    11  browser
-    12  device
-    13  state
-    14  dma
-    15  inmarket_clk
-    16  inmarket_act
-    17  inmarket_rt
-    18  gender
-);
+my @predictors=map {my ($l,$r)=split /=>/, $_; ([grep {$_} (split /\s+/, $l)],[grep {$_} (split /\s+/, $r)])} (grep {$_ =~ /=>/} (map {s/#.+$//;$_} (split /\n/, $predictor_string)));
+
+#warn Dumper \@predictors;
 
 my %field_name_to_col = map { $field_names{$_} => $_} keys %field_names;
 
 warn Dumper \%field_name_to_col;
 
-#MID SID EV REF_IP CTRY TIME PBMID UUID COOKIED HOSTNUM OS BROWSER DEVICE? STATE DMA INMARKET_CLK INMARKET_ACT INMARKET_RT GENDER
-#But to assign predictors, the field must be named
+#exit;
 
-#A lower level predictor CANNOT predict the driving column of a higher level one.
 
-my @predictors=(
-
-    [qw(uuid)] => [qw(ip sid ev cookied browser device os inmarket_clk inmarket_act inmarket_rt gender)],
-    [qw(uuid)] => [qw(browser device os inmarket_clk inmarket_act inmarket_rt gender)],
-    #[qw(uuid)] => [qw(ip ev cookied ctry state dma browser device os inmarket_clk inmarket_act inmarket_rt gender)],
-    [qw(uuid)] => [qw(cookied browser device os)],
-    [qw(ip)]   => [qw(sid ev cookied ctry state dma browser device os inmarket_clk inmarket_act inmarket_rt gender)],
-    [qw(ip)]   => [qw(ctry state dma)],
-    [qw(sid)]  => [qw(ctry browser)],
-    [qw(sid)]  => [qw(gender)],
-    [qw(inmarket_clk)]  => [qw(inmarket_act inmarket_rt)],
-    #pbmid => [qw(mid)],
-    [qw(cookied)] => [qw(os browser device)],
-    #[qw(browser)] => [qw(device)],
-    #device => [qw(os browser)],
-    [qw(os)]   => [qw(browser)],
-    [qw(dma)]  => [qw(state ctry)],
-    [qw(state)] => [qw(ctry)],
-    [qw(sid pbmid ctry)]  => [qw(mid)],
-    #[qw(sid)]  => [qw(mid)],
-);
 
 my @predictor_cols;
 
@@ -118,11 +80,10 @@ open INPUT_SAVE, ">INPUT_SAVE";
 
 my $n_cols=0;
 
-my @column_encodings;
 
-$column_encodings[3]='ip';
-$column_encodings[7]='uuid';
-$column_encodings[5]='datetime';
+
+
+
 
 my @col_to_max_length;
 
@@ -135,34 +96,53 @@ while(<>){
     chomp;
     my @fields = split /\t/;
 
-    my $ip = $fields[3];
+
     $n_cols = $#fields+1 if $#fields+1 > $n_cols;
 
 
-    my $uuid = $fields[7];
-    warn "BAD UUID '$uuid' " unless lc $uuid eq  lc count::uuid_unbinarize(count::uuid_binarize($uuid));
-    $uuid = count::shorten_uuid($uuid);
-    $fields[7] = $uuid;
+    #DESTRUCTIVE ROW MODIFICATIONS
+    for(my $c=0;$c<=$#fields;$c++){
+        $column_encodings[$c]='' unless defined $column_encodings[$c];
+        if($column_encodings[$c] eq 'uuid'){
+            my $uuid = $fields[$c];
+            warn "BAD UUID '$uuid' " unless lc $uuid eq  lc count::uuid_unbinarize(count::uuid_binarize($uuid));
+            $uuid = count::shorten_uuid($uuid);
+            $fields[$c] = $uuid;
+        }
+        if($column_encodings[$c] eq 'datetime'){
+            $fields[$c] = count::chop_seconds_from_datetime($fields[$c]);
+        }
+    }
 
-    $fields[5] = count::chop_seconds_from_datetime($fields[5]);
+
 
     #DONE MODIFYING ROW
     my $row_string = join "\t", @fields;
     $rows_sum += count::str2num(substr(md5($row_string),0,3));#first 3 bytes of md5 sum
 
+
+
     print INPUT_SAVE ($row_string."\n");
 
+    #NON-DESTRUCTIVE Row Encodings
+    for(my $c=0;$c<=$#fields;$c++){
+        if($column_encodings[$c] eq 'ip'){
+            my $ip = $fields[$c];
+            warn "BAD IP '$ip'" unless $ip eq count::ip_unbinarize(count::ip_binarize $ip);
+            $fields[$c]=count::ip_binarize $ip;
+        }
+        if($column_encodings[$c] eq 'uuid'){
+            $fields[$c] = count::short_uuid_binarize($fields[$c]);
+        }
+        if($column_encodings[$c] eq 'datetime'){
+            my $datetime = $fields[$c];
+            my $int =  count::datetime_to_integer $datetime;
+            my $d = count::datetime_from_integer $int;
+            $fields[$c]=$int;
+            warn "$datetime\t$d\t$int\n" unless $datetime eq $d;
+        }
+    }
 
-    $fields[7] = count::short_uuid_binarize($fields[7]);
-    warn "BAD IP '$ip'" unless $ip eq count::ip_unbinarize(count::ip_binarize $ip);
-    $fields[3]=count::ip_binarize $ip;
-    #warn length($ip);
-
-    my $datetime = $fields[5];
-    my $int =  count::datetime_to_integer $datetime;
-    my $d = count::datetime_from_integer $int;
-    $fields[5]=$int;
-    warn "$datetime\t$d\t$int\n" unless $datetime eq $d;
 
 
 
@@ -195,11 +175,8 @@ for (my $c=0;$c<$n_cols;$c++){
 }
 
 
-for (my $c=0;$c<$n_cols;$c++){
-    #push @sort_order, $c unless grep {$c == $_} @sort_order;
-}
-
-@sort_order = sort {$col_to_uniques[$b] <=> $col_to_uniques[$a]} (0..($n_cols-1));
+push @sort_order, $driving_column if $driving_column >=0;
+push @sort_order, sort {$col_to_uniques[$b] <=> $col_to_uniques[$a]} (grep {$_ != $driving_column}  0..($n_cols-1));
 
 warn Dumper \@sort_order;
 
@@ -210,7 +187,7 @@ my $sort_function = join " or ", (map {"(\$a->[$_] cmp \$b->[$_])"} @sort_order)
 eval "\@records = sort {$sort_function} \@records";
 die "sort eval error: $@" if $@;
 
-my $driving_column = $sort_order[0];
+
 
 my $driving_column_uniques = $col_to_uniques[$driving_column];
 warn "$driving_column_uniques driving column uniques\n";
@@ -287,8 +264,6 @@ open BINARY, ">BINARY";
 open BINARY2, ">BINARY2";
 open INDEX, ">INDEX";
 
-open CHECKSUMS, ">CHECKSUMS";
-
 {
     local $Data::Dumper::Indent=0;
     local $Data::Dumper::Terse=1;
@@ -306,6 +281,7 @@ open CHECKSUMS, ">CHECKSUMS";
         driving_column => $driving_column,
         driving_col_rice_bits => $driving_col_rice_bits,
         rows_sum => $rows_sum,
+        n_rows => $#records+1,
         };
     #print INDEX encode_json \@col_to_sorted_keys;
     #store_fd \@col_to_sorted_keys, \*INDEX;

@@ -38,6 +38,7 @@ my $driving_column = $index->{driving_column};
 my $driving_col_rice_bits = $index->{driving_col_rice_bits};
 
 my $correct_rows_sum = $index->{rows_sum};
+my $correct_n_rows = $index->{n_rows};
 
 #warn Dumper \@predictor_cols;
 #warn Dumper \%field_name_to_col;
@@ -400,6 +401,10 @@ while(not stream_finished($BINARY)){
         $r++;
     }
 
+}
+
+if($r != $correct_n_rows){
+    warn "Decoded the wrong number of rows, is $r, should be $correct_n_rows\n";
 }
 
 if($rows_sum == $correct_rows_sum){
