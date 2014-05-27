@@ -11,6 +11,8 @@ use count;
 
 use Storable qw(store_fd nstore_fd freeze thaw);
 
+my $check_sum=1;
+
 my ($index_file, $binary_file, $binary2_file) = @ARGV;
 
 open INDEX, "<",  $index_file or die "cant open:$!";
@@ -250,7 +252,9 @@ while(not stream_finished($BINARY)){
                     #my $stored_val_bits = read_bits($BINARY2,$stored_value_length);
                     #my $stored_val_idx = oct("0b$stored_val_bits");
 
-                    my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ? int(count::log2(($col_to_ref_sum[$c]+$#{$col_to_stored_vals[$c]})/($col_to_ref_count[$c]+1))) : count::log2_int($#{$col_to_stored_vals[$c]}/2);
+                    my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ?
+                        count::log2_int(int(($col_to_ref_sum[$c]+$#{$col_to_stored_vals[$c]})/($col_to_ref_count[$c]+1)))-1
+                         : count::log2_int(int(($#{$col_to_stored_vals[$c]}+1)/2))-1;
                     $rice_bits = 0 if $rice_bits < 0;
                     my $stored_val_idx = count::from_rice(sub {read_bits($BINARY2,1)}, $rice_bits);
                     $val = $col_to_stored_vals[$c]->[$stored_val_idx];
@@ -396,7 +400,9 @@ while(not stream_finished($BINARY)){
     while($dupes>0){
         my $row_string = (join "\t", @vals);
         print ($row_string."\n");
-        $rows_sum += count::str2num(substr(md5($row_string),0,3));#first 3 bytes of md5 sum
+        if($check_sum){
+            $rows_sum += count::str2num(substr(md5($row_string),0,3));#first 3 bytes of md5 sum
+        }
         $dupes--;
         $r++;
     }
@@ -406,13 +412,13 @@ while(not stream_finished($BINARY)){
 if($r != $correct_n_rows){
     warn "Decoded the wrong number of rows, is $r, should be $correct_n_rows\n";
 }
-
-if($rows_sum == $correct_rows_sum){
-    warn "Row checksum good\n";
-}else{
-    die "Row checksum BAD: is $rows_sum - should be $correct_rows_sum\n";
+if($check_sum){
+    if($rows_sum == $correct_rows_sum){
+        warn "Row checksum good\n";
+    }else{
+        die "Row checksum BAD: is $rows_sum - should be $correct_rows_sum\n";
+    }
 }
-
 #warn Dumper \%col_to_value_to_most_popular_friends;
 
 

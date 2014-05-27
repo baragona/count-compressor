@@ -112,6 +112,9 @@ while(<>){
         if($column_encodings[$c] eq 'datetime'){
             $fields[$c] = count::chop_seconds_from_datetime($fields[$c]);
         }
+        if($column_encodings[$c] eq 'ignore'){
+            $fields[$c] = '';
+        }
     }
 
 
@@ -522,7 +525,9 @@ for (my $r=0;$r<=$#records;$r++){
 
                 my $last_ref_idx = ($col_to_last_ref_idx[$c] or 1);
                 my $ref_idx = $col_to_currently_stored_val_hash[$c]->{$val};
-                my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ? int(count::log2(($col_to_ref_sum[$c]+$#{$col_to_currently_stored_val_list[$c]})/($col_to_ref_count[$c]+1))) : count::log2_int($#{$col_to_currently_stored_val_list[$c]}/2);
+                my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ?
+                    count::log2_int(int(($col_to_ref_sum[$c]+$#{$col_to_currently_stored_val_list[$c]})/($col_to_ref_count[$c]+1)))-1
+                    : count::log2_int(int(($#{$col_to_currently_stored_val_list[$c]}+1)/2))-1;
                 $rice_bits = 0 if $rice_bits < 0;
                 $value_bits = count::to_rice($ref_idx, $rice_bits);
                 #$value_bits='';

@@ -24,16 +24,22 @@
 #Space efficient encodings for certain types of data.
 #Current choices:
 # ip - IPv4 address
-# uuid - Stores only the first 8 bytes of the SHA256 of the UUID.
-# Datetime - expects a value looking like this: 2014-05-07 23:50:00 -- and does not store the seconds column, the output will be at :00 seconds.
+# uuid - Stores only the first 8 bytes of the SHA256 of the UUID. This can still be safely assumed to be universally unique, you can have many billion of unique ID's without a single collision
+# datetime - expects a value looking like this: 2014-05-07 23:50:00 -- and does not store the seconds column, the output will be at :00 seconds.
+# ignore - encode this column as the empty string
 
 $column_encodings[3]='ip';
 $column_encodings[7]='uuid';
 $column_encodings[5]='datetime';
 
 
+#How To Pick a driving column
+#1. All values MUST be the same length, always.
+#2. There should be very many possible values.
+#3. The values should be essentially random binary data.
+#4. Which means the only two real choices for the driving column are IP and UUID, and only if they are using the dedicated encodings above
 
-$driving_column = 3;
+$driving_column = 3;#ip
 
 
 
