@@ -28,6 +28,20 @@ sub log2_int{
 
 }
 
+sub ctype_for_bitarray{
+    my $bits = shift;
+    my $size_bits = 2**log2_int($bits-1);
+
+    $size_bits = 8 if $size_bits <8;
+    die "Cant fit $bits bits into a C type" if $size_bits > 128;
+
+    my $type  = "uint$size_bits"."_t";
+
+    $type = "__$type" if $size_bits ==128;
+
+    return $type;
+}
+
 sub binary_digits{
     my $num = shift;
     my $num_digits = shift;

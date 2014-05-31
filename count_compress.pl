@@ -267,29 +267,7 @@ open BINARY, ">BINARY";
 open BINARY2, ">BINARY2";
 open INDEX, ">INDEX";
 
-{
-    local $Data::Dumper::Indent=0;
-    local $Data::Dumper::Terse=1;
-    #local $Data::Dumper::Useqq=1;
-    local $Data::Dumper::Pair=',';
-    print INDEX Dumper {
-        #col_to_sorted_keys => \@col_to_sorted_keys,
-        n_cols => $n_cols,
-        column_encodings => \@column_encodings,
-        field_names => \%field_names,
-        col_to_predicted_cols => \%col_to_predicted_cols,
-        predictor_cols => \@predictor_cols,
-        col_to_max_length => \@col_to_max_length,
-        col_to_alphabet => \@col_to_alphabet,
-        driving_column => $driving_column,
-        driving_col_rice_bits => $driving_col_rice_bits,
-        rows_sum => $rows_sum,
-        n_rows => $#records+1,
-        };
-    #print INDEX encode_json \@col_to_sorted_keys;
-    #store_fd \@col_to_sorted_keys, \*INDEX;
 
-}
 
 
 # my @encoding_files;
@@ -656,6 +634,33 @@ for (my $c=0;$c<$n_cols;$c++){
 }
 
 #warn Dumper \%col_to_value_to_most_popular_friends;
+
+
+{
+    local $Data::Dumper::Indent=0;
+    local $Data::Dumper::Terse=1;
+    #local $Data::Dumper::Useqq=1;
+    local $Data::Dumper::Pair=',';
+    print INDEX Dumper {
+        #col_to_sorted_keys => \@col_to_sorted_keys,
+        n_cols => $n_cols,
+        column_encodings => \@column_encodings,
+        field_names => \%field_names,
+        col_to_predicted_cols => \%col_to_predicted_cols,
+        predictor_cols => \@predictor_cols,
+        col_to_max_length => \@col_to_max_length,
+        col_to_alphabet => \@col_to_alphabet,
+        driving_column => $driving_column,
+        driving_col_rice_bits => $driving_col_rice_bits,
+        rows_sum => $rows_sum,
+        n_rows => $#records+1,
+        col_to_max_stored_vals => [map {scalar(@{$col_to_currently_stored_val_list[$_]})} (0..($n_cols-1))],
+        col_to_uniques => \@col_to_uniques,
+        };
+    #print INDEX encode_json \@col_to_sorted_keys;
+    #store_fd \@col_to_sorted_keys, \*INDEX;
+
+}
 
 close INPUT_SAVE;
 close INDEX;
