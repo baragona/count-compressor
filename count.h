@@ -29,10 +29,12 @@ MAYBE PURE INLINE int log2_int(uint64_t x){
 typedef uint64_t string_id ;
 
 
-//Jenkins hash
-INLINE uint32_t calc_hash(const char *key, size_t len){
+INLINE uint32_t jenkins_hash(const char *key, size_t len){
     uint32_t hash, i;
-    for(hash = i = 0; i < len; ++i)
+
+    hash = len;//CUSTOM MODIFICATION: initialize hash to length
+
+    for(i = 0; i < len; ++i)
     {
         hash += key[i];
         hash += (hash << 10);
@@ -42,5 +44,9 @@ INLINE uint32_t calc_hash(const char *key, size_t len){
     hash ^= (hash >> 11);
     hash += (hash << 15);
     return hash;
+}
+
+INLINE uint32_t calc_bstring_hash(bstring b){
+    return jenkins_hash((char *)(b->data), b->slen);
 }
 

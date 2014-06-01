@@ -46,8 +46,10 @@ my $driving_column = $index->{driving_column};
 my $driving_col_rice_bits = $index->{driving_col_rice_bits};
 
 my @col_to_max_stored_vals = @{$index->{col_to_max_stored_vals}};
-
+my @col_to_uniques = @{$index->{col_to_uniques}};
 my $max_stored_vals = sum @col_to_max_stored_vals;
+my $max_strings = sum @col_to_uniques;
+
 
 my $correct_rows_sum = $index->{rows_sum};
 my $correct_n_rows = $index->{n_rows};
@@ -74,10 +76,12 @@ if($operating_mode eq 'perl'){
     my @col_to_stored_vals;
 
     my @previous_row;
+
     my %col_to_value_to_friends_str_to_count;
     my %col_to_value_to_most_popular_friends;
     my %col_to_friends_str_to_count;
     my %col_to_most_popular_friends;
+
     my @col_to_ref_count;
     my @col_to_ref_sum;
 
@@ -275,9 +279,7 @@ if($operating_mode eq 'perl'){
                     my $encoding_choice_bit = $encoding_choice_bits[$c];
 
                     if($encoding_choice_bit==0){
-                        #my $stored_value_length = count::log2_int($#{$col_to_stored_vals[$c]});
-                        #my $stored_val_bits = read_bits($BINARY2,$stored_value_length);
-                        #my $stored_val_idx = oct("0b$stored_val_bits");
+                        #Ref
 
                         my $rice_bits = ($col_to_ref_count[$c] and $col_to_ref_sum[$c]) ?
                             count::log2_int(int(($col_to_ref_sum[$c]+$#{$col_to_stored_vals[$c]})/($col_to_ref_count[$c]+1)))-1
@@ -303,6 +305,8 @@ if($operating_mode eq 'perl'){
 
 
                     }elsif($encoding_choice_bit==1){
+                        #Lit
+
                         if($c == $driving_column and $r!=0){
                             #only encode the difference
                             my $diff = count::from_rice(sub {read_bits($BINARY2,1)}, $driving_col_rice_bits);
@@ -461,18 +465,103 @@ else{
 #include <unistd.h>
 #include <stdint.h>
 
-#include <unordered_map>
+//#include <unordered_map>
 
 #define INLINE __attribute__((always_inline)) static
 #define PURE __attribute__((pure))
 #define MAYBE __attribute__((unused))
+
+#include "khash.h"
+KHASH_INIT(the_hash, uint32_t, uint64_t, 1, kh_int_hash_func, kh_int_hash_equal)
+
+
+//The audacity to just include a .c file
+#include "bstrlib.c"
+
 #include "count.h"
 
 
+KHASH_INIT(bstring_to_bstring, bstring, bstring, 1, calc_bstring_hash, biseq)
+KHASH_INIT(bstring_to_int, bstring, int, 1, calc_bstring_hash, biseq)
 
 
 ENDC
 
+    for(my $i=0;$i<$n_cols;$i++){
+        $csrc.= "    typedef ".(count::ctype_for_bitarray(count::log2_int($col_to_uniques[$i])))."\tstring_id_$i;\n";
+    }
+
+
+    $csrc .= "
+#pragma pack(push)  /* push current alignment to stack */
+#pragma pack(1)     /* set alignment to 1 byte boundary */
+    ";
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "    struct friends_$i {\n";
+        for my $predicted_col (@{$col_to_predicted_cols{$predictor_cols[$i]}}){
+            $csrc.= "        string_id_$predicted_col col_$predicted_col;\n";
+        }
+        $csrc.= "    };\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "    struct value_$i {\n";
+        for my $predictor_col (split /-/, substr($predictor_cols[$i],0,-4)){
+            $csrc.= "        string_id_$predictor_col col_$predictor_col;\n";
+        }
+        $csrc.= "    };\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "    struct val_plus_friends_$i {\n";
+            $csrc.= "        struct value_$i val;\n";
+            $csrc.= "        struct friends_$i friends;\n";
+        $csrc.= "    };\n";
+    }
+    $csrc .= "
+#pragma pack(pop)   /* restore original alignment from stack */
+
+//#define struct_hash(struct_type) jenkins_hash((char *)(&struct_hash_val), sizeof(struct struct_type))
+
+";
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "INLINE uint32_t struct_hash_value_$i (struct value_$i val){\n";
+        $csrc.= "    return jenkins_hash((char *)(&val), sizeof(struct value_$i));\n";
+        $csrc.= "}\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "INLINE int struct_equal_value_$i (struct value_$i a, struct value_$i b){\n";
+        $csrc.= "    return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_$i));\n";
+        $csrc.= "}\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "INLINE uint32_t struct_hash_val_plus_friends_$i (struct val_plus_friends_$i val){\n";
+        $csrc.= "    return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_$i));\n";
+        $csrc.= "}\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "INLINE int struct_equal_val_plus_friends_$i (struct val_plus_friends_$i a, struct val_plus_friends_$i b){\n";
+        $csrc.= "    return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_$i));\n";
+        $csrc.= "}\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "INLINE uint32_t struct_hash_friends_$i (struct friends_$i val){\n";
+        $csrc.= "    return jenkins_hash((char *)(&val), sizeof(struct friends_$i));\n";
+        $csrc.= "}\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "INLINE int struct_equal_friends_$i (struct friends_$i a, struct friends_$i b){\n";
+        $csrc.= "    return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_$i));\n";
+        $csrc.= "}\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "KHASH_INIT(value_to_friends_$i, struct value_$i, struct friends_$i, 1, struct_hash_value_$i, struct_equal_value_$i)\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "KHASH_INIT(val_plus_friends_to_count_$i, struct val_plus_friends_$i, int, 1, struct_hash_val_plus_friends_$i, struct_equal_val_plus_friends_$i)\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "KHASH_INIT(friends_to_count_$i, struct friends_$i, int, 1, struct_hash_friends_$i, struct_equal_friends_$i)\n";
+    }
+    $csrc .= "#define driving_column_bytes  $col_to_max_length[$driving_column]\n";
     $csrc .= "#define MAX_FDS ".($max_passed_fd+1)."\n";
 
 $csrc.=<<'ENDC';
@@ -549,32 +638,73 @@ INLINE void seek_till_byte_boundary(int fd){
     }
 }
 
+INLINE uint64_t read_rice(int fd, int k){
+    uint64_t m = 1 << k;
+    int q = 0;
+    uint64_t x;
+    int i;
+
+    while (read_bit(fd)) {q++;}
+    x = m * q;
+
+    for (i=k-1; i>=0; i--) {x = x | (read_bit(fd) << i);}
+
+    return x;
+}
+
 int main(int argc, char ** argv){
 
 ENDC
+
     $csrc.=<<ENDC;
     const int BINARY = $binary_fileno;
     const int BINARY2 = $binary2_fileno;
     const __uint128_t one = 1;
     //__uint128_t test=one<<5;
-    string_id col_to_stored_vals[$max_stored_vals]; //FLAT ARRAY for all cols
+
+
     int col_to_n_stored_vals[$n_cols]={0};
 
-    //my %col_to_value_to_friends_str_to_count;
-    //my %col_to_value_to_most_popular_friends;
-    //my %col_to_friends_str_to_count;
-    //my %col_to_most_popular_friends;
-    uint64_t col_to_ref_count[$n_cols];
-    uint64_t col_to_ref_sum[$n_cols];
+
+    uint64_t col_to_ref_count[$n_cols]={0};
+    uint64_t col_to_ref_sum[$n_cols]={0};
+
+
+    int col_to_string_pool_length[$n_cols]={0};
 ENDC
+
+    for(my $i=0;$i<$n_cols;$i++){
+        $csrc.= "    bstring string_pool_$i"."\t[$col_to_uniques[$i]];\n";
+    }
+    $csrc.= "    bstring * driving_col_string_pool = string_pool_$driving_column;\n";
+
+    for(my $i=0;$i<$n_cols;$i++){
+        $csrc.= "    string_id_$i stored_vals_$i\t[$col_to_max_stored_vals[$i]];\n";
+    }
+
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "    printf(\"%d\t%d\\n\",(int)sizeof(struct friends_$i),(int)sizeof(struct value_$i));\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "    khash_t(value_to_friends_$i) *value_to_most_popular_friends_$i = kh_init(value_to_friends_$i);\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "    khash_t(val_plus_friends_to_count_$i) *val_to_friends_to_count_$i = kh_init(val_plus_friends_to_count_$i);\n";
+    }
+
+    $csrc .= "    typedef ".count::ctype_for_bitarray(8*$col_to_max_length[$driving_column])." driving_col_as_number;";
+
     $csrc.=<<'ENDC';
     int r=0;
+
+    driving_col_as_number previous_driving_col_number=0;
 
     while(! stream_finished(BINARY)){
 
 ENDC
     #$csrc.= "        const int n_cols = $n_cols;\n";
     $csrc.= "        const int driving_column = $driving_column;\n";
+    $csrc.= "        const int driving_col_rice_bits = $driving_col_rice_bits;\n";
     $csrc.= "        const int n_predictors = $#predictor_cols+1;\n";
     #$csrc.= "        char col_was_predicted[$n_cols]={0};\n";
     #$csrc.= "        char predictor_column_used[$#predictor_cols+1]={0};\n";
@@ -697,9 +827,108 @@ ENDC
                 val = previous_row[c];
             }else{
                 if((encoding_choice_bits & (one<<c))==0){
+                    //Ref
+                    int rice_bits = ((col_to_ref_count[c]>0) && (col_to_ref_sum[c]>0)) ?
+                        log2_int((col_to_ref_sum[c]+col_to_n_stored_vals[c]-1)/(col_to_ref_count[c]+1))-1
+                         : log2_int((col_to_n_stored_vals[c])/2)-1;
+                    if(rice_bits < 0){
+                        rice_bits = 0;
+                    }
+
+
+
+                    int stored_val_idx = read_rice(BINARY2, rice_bits);
+                    switch(c){
+ENDC
+    $csrc.= join "", map {"                        case $_: val = stored_vals_$_"."[stored_val_idx];break;\n"} (0..($n_cols-1));
+    $csrc.=<<'ENDC';
+                    }
+                    int swap_with = (20*stored_val_idx) / 21;
+
+                    if((swap_with >= 0) && (swap_with != stored_val_idx)){
+                        switch(c){
+ENDC
+    $csrc.= join "", map {"                            case $_:{
+                                string_id_$_ temp = stored_vals_$_"."[stored_val_idx];
+                                stored_vals_$_"."[stored_val_idx] = stored_vals_$_"."[swap_with];
+                                stored_vals_$_"."[swap_with] = temp;
+                                break;
+                            }\n"} (0..($n_cols-1));
+    $csrc.=<<'ENDC';
+                        }
+
+                    }
+
+
+                    col_to_ref_sum[c]+=stored_val_idx;
+                    col_to_ref_count[c]++;
 
                 }else{
+                    //Lit
 
+                    if((c == driving_column) && (r!=0)){
+                        //only encode the difference
+                        driving_col_as_number diff = read_rice(BINARY2, driving_col_rice_bits);
+                        driving_col_as_number new_val = previous_driving_col_number + diff;
+
+                        previous_driving_col_number = new_val;
+                        //Decode the number into a str
+                        uint8_t buffer[driving_column_bytes]={0};
+                        for(int i=driving_column_bytes-1;i>=0;i--){
+                            buffer[i] = new_val & 0xFF;
+                            new_val >>= 8;
+                        }
+                        //Add it to the pool
+                        bstring val_str = blk2bstr(buffer,driving_column_bytes);
+                        driving_col_string_pool[col_to_string_pool_length[c]] = val_str;
+                        col_to_string_pool_length[c]++;
+                    }else{
+                        //Not delta encoded, just a plain old Lit
+
+                        //MORE HERE
+
+                        if((c == driving_column) && (r==0)){
+                            //only on the first row will this happen
+                            driving_col_as_number num=0;
+                            bstring val_str = driving_col_string_pool[val];
+                            for(int i=0;i<driving_column_bytes;i++){
+                                num<<=8;
+                                num+=((uint8_t *)(val_str->data))[i];
+                            }
+                            previous_driving_col_number = num;
+                        }
+                    }
+                    /*
+                    if($c == $driving_column and $r!=0){
+                        #only encode the difference
+                        my $diff = count::from_rice(sub {read_bits($BINARY2,1)}, $driving_col_rice_bits);
+                        $val = count::num2str(count::str2num($previous_row[$c])+$diff,$col_to_max_length[$driving_column]);
+                    }else{
+                        my $length = $literal_lengths[$c];
+                        $length = oct("0b$length");
+
+
+                        if(defined $col_to_literal_bits[$c]){
+                            my $bits_per_char=$col_to_literal_bits[$c];
+                            $val='';
+                            for (my $i=0;$i<$length;$i++){
+                                my $bits = read_bits($BINARY2,$bits_per_char);
+                                $val .= $col_to_alpha_idx_to_char[$c]->[oct("0b$bits")];
+                            }
+                        }else{
+                            $val = read_bits($BINARY2,$length*8);
+                            $val = count::bitstring_to_bytes($val);
+                        }
+                    }
+
+                    push @{$col_to_stored_vals[$c]}, $val;
+
+                    if($do_store_bits[$c]==0){
+                        #warn "DELETING\n";
+                        my $delete_idx = $#{$col_to_stored_vals[$c]};
+                        splice(@{$col_to_stored_vals[$c]}, $delete_idx, 1);
+                    }
+                    */
                 }
             }
 
@@ -723,7 +952,14 @@ ENDC
     open my $cout, '>', $filename or die "cant open temp c file: $!";
     print $cout $csrc or die "cant print csrc: $!";
     close $cout;
-    system('g++','-Wall','-std=c99','-s','-O3','-fwhole-program','-Winline','-ftree-vectorizer-verbose=2','-ffast-math','-msse2',$filename,'-o',$execname);#'-Wl,-emain', '-nostdlib', '-lc'
+
+    #garbage collect final program: - may break gprof and otherwise "break things"
+    #http://stackoverflow.com/questions/4274804/query-on-ffunction-section-fdata-sections-options-of-gcc
+    #'-fdata-sections','-ffunction-sections','-Wl,--gc-sections,--icf',
+
+    #'bstrlib.c'
+
+    system('gcc','-Wall','-std=c99','-s','-O3','-fwhole-program','-Winline','-ftree-vectorizer-verbose=2','-ffast-math','-msse2',,$filename,'-o',$execname);
 
     die "compilation error" if $?;
 
