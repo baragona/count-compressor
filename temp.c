@@ -1,4 +1,4 @@
-#line 461
+#line 463
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +12,9 @@
 #define PURE __attribute__((pure))
 #define MAYBE __attribute__((unused))
 
+
+
+
 #include "khash.h"
 KHASH_INIT(the_hash, uint32_t, uint64_t, 1, kh_int_hash_func, kh_int_hash_equal)
 
@@ -24,6 +27,19 @@ KHASH_INIT(the_hash, uint32_t, uint64_t, 1, kh_int_hash_func, kh_int_hash_equal)
 
 KHASH_INIT(bstring_to_bstring, bstring, bstring, 1, calc_bstring_hash, biseq)
 KHASH_INIT(bstring_to_int, bstring, int, 1, calc_bstring_hash, biseq)
+
+
+//returns new value
+#define kh_increment(type,ptr,value) ({khiter_t k = kh_get(type, ptr, value);\
+int is_missing = (k == kh_end(ptr));\
+if(is_missing){\
+    int ret;\
+    k = kh_put(type, ptr, value, &ret);\
+    kh_value(ptr,k)=0;\
+}\
+kh_value(ptr,k)++;kh_value(ptr,k);})
+
+
 
 
     typedef uint16_t	string_id_0;
@@ -223,238 +239,238 @@ KHASH_INIT(bstring_to_int, bstring, int, 1, calc_bstring_hash, biseq)
 
 //#define struct_hash(struct_type) jenkins_hash((char *)(&struct_hash_val), sizeof(struct struct_type))
 
-INLINE uint32_t struct_hash_value_0 (struct value_0 val){
+PURE INLINE uint32_t struct_hash_value_0 (struct value_0 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_0));
 }
-INLINE uint32_t struct_hash_value_1 (struct value_1 val){
+PURE INLINE uint32_t struct_hash_value_1 (struct value_1 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_1));
 }
-INLINE uint32_t struct_hash_value_2 (struct value_2 val){
+PURE INLINE uint32_t struct_hash_value_2 (struct value_2 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_2));
 }
-INLINE uint32_t struct_hash_value_3 (struct value_3 val){
+PURE INLINE uint32_t struct_hash_value_3 (struct value_3 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_3));
 }
-INLINE uint32_t struct_hash_value_4 (struct value_4 val){
+PURE INLINE uint32_t struct_hash_value_4 (struct value_4 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_4));
 }
-INLINE uint32_t struct_hash_value_5 (struct value_5 val){
+PURE INLINE uint32_t struct_hash_value_5 (struct value_5 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_5));
 }
-INLINE uint32_t struct_hash_value_6 (struct value_6 val){
+PURE INLINE uint32_t struct_hash_value_6 (struct value_6 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_6));
 }
-INLINE uint32_t struct_hash_value_7 (struct value_7 val){
+PURE INLINE uint32_t struct_hash_value_7 (struct value_7 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_7));
 }
-INLINE uint32_t struct_hash_value_8 (struct value_8 val){
+PURE INLINE uint32_t struct_hash_value_8 (struct value_8 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_8));
 }
-INLINE uint32_t struct_hash_value_9 (struct value_9 val){
+PURE INLINE uint32_t struct_hash_value_9 (struct value_9 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_9));
 }
-INLINE uint32_t struct_hash_value_10 (struct value_10 val){
+PURE INLINE uint32_t struct_hash_value_10 (struct value_10 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_10));
 }
-INLINE uint32_t struct_hash_value_11 (struct value_11 val){
+PURE INLINE uint32_t struct_hash_value_11 (struct value_11 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_11));
 }
-INLINE uint32_t struct_hash_value_12 (struct value_12 val){
+PURE INLINE uint32_t struct_hash_value_12 (struct value_12 val){
     return jenkins_hash((char *)(&val), sizeof(struct value_12));
 }
-INLINE int struct_equal_value_0 (struct value_0 a, struct value_0 b){
+PURE INLINE int struct_equal_value_0 (struct value_0 a, struct value_0 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_0));
 }
-INLINE int struct_equal_value_1 (struct value_1 a, struct value_1 b){
+PURE INLINE int struct_equal_value_1 (struct value_1 a, struct value_1 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_1));
 }
-INLINE int struct_equal_value_2 (struct value_2 a, struct value_2 b){
+PURE INLINE int struct_equal_value_2 (struct value_2 a, struct value_2 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_2));
 }
-INLINE int struct_equal_value_3 (struct value_3 a, struct value_3 b){
+PURE INLINE int struct_equal_value_3 (struct value_3 a, struct value_3 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_3));
 }
-INLINE int struct_equal_value_4 (struct value_4 a, struct value_4 b){
+PURE INLINE int struct_equal_value_4 (struct value_4 a, struct value_4 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_4));
 }
-INLINE int struct_equal_value_5 (struct value_5 a, struct value_5 b){
+PURE INLINE int struct_equal_value_5 (struct value_5 a, struct value_5 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_5));
 }
-INLINE int struct_equal_value_6 (struct value_6 a, struct value_6 b){
+PURE INLINE int struct_equal_value_6 (struct value_6 a, struct value_6 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_6));
 }
-INLINE int struct_equal_value_7 (struct value_7 a, struct value_7 b){
+PURE INLINE int struct_equal_value_7 (struct value_7 a, struct value_7 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_7));
 }
-INLINE int struct_equal_value_8 (struct value_8 a, struct value_8 b){
+PURE INLINE int struct_equal_value_8 (struct value_8 a, struct value_8 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_8));
 }
-INLINE int struct_equal_value_9 (struct value_9 a, struct value_9 b){
+PURE INLINE int struct_equal_value_9 (struct value_9 a, struct value_9 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_9));
 }
-INLINE int struct_equal_value_10 (struct value_10 a, struct value_10 b){
+PURE INLINE int struct_equal_value_10 (struct value_10 a, struct value_10 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_10));
 }
-INLINE int struct_equal_value_11 (struct value_11 a, struct value_11 b){
+PURE INLINE int struct_equal_value_11 (struct value_11 a, struct value_11 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_11));
 }
-INLINE int struct_equal_value_12 (struct value_12 a, struct value_12 b){
+PURE INLINE int struct_equal_value_12 (struct value_12 a, struct value_12 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_12));
 }
-INLINE uint32_t struct_hash_val_plus_friends_0 (struct val_plus_friends_0 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_0 (struct val_plus_friends_0 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_0));
 }
-INLINE uint32_t struct_hash_val_plus_friends_1 (struct val_plus_friends_1 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_1 (struct val_plus_friends_1 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_1));
 }
-INLINE uint32_t struct_hash_val_plus_friends_2 (struct val_plus_friends_2 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_2 (struct val_plus_friends_2 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_2));
 }
-INLINE uint32_t struct_hash_val_plus_friends_3 (struct val_plus_friends_3 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_3 (struct val_plus_friends_3 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_3));
 }
-INLINE uint32_t struct_hash_val_plus_friends_4 (struct val_plus_friends_4 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_4 (struct val_plus_friends_4 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_4));
 }
-INLINE uint32_t struct_hash_val_plus_friends_5 (struct val_plus_friends_5 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_5 (struct val_plus_friends_5 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_5));
 }
-INLINE uint32_t struct_hash_val_plus_friends_6 (struct val_plus_friends_6 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_6 (struct val_plus_friends_6 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_6));
 }
-INLINE uint32_t struct_hash_val_plus_friends_7 (struct val_plus_friends_7 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_7 (struct val_plus_friends_7 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_7));
 }
-INLINE uint32_t struct_hash_val_plus_friends_8 (struct val_plus_friends_8 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_8 (struct val_plus_friends_8 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_8));
 }
-INLINE uint32_t struct_hash_val_plus_friends_9 (struct val_plus_friends_9 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_9 (struct val_plus_friends_9 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_9));
 }
-INLINE uint32_t struct_hash_val_plus_friends_10 (struct val_plus_friends_10 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_10 (struct val_plus_friends_10 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_10));
 }
-INLINE uint32_t struct_hash_val_plus_friends_11 (struct val_plus_friends_11 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_11 (struct val_plus_friends_11 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_11));
 }
-INLINE uint32_t struct_hash_val_plus_friends_12 (struct val_plus_friends_12 val){
+PURE INLINE uint32_t struct_hash_val_plus_friends_12 (struct val_plus_friends_12 val){
     return jenkins_hash((char *)(&val), sizeof(struct val_plus_friends_12));
 }
-INLINE int struct_equal_val_plus_friends_0 (struct val_plus_friends_0 a, struct val_plus_friends_0 b){
+PURE INLINE int struct_equal_val_plus_friends_0 (struct val_plus_friends_0 a, struct val_plus_friends_0 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_0));
 }
-INLINE int struct_equal_val_plus_friends_1 (struct val_plus_friends_1 a, struct val_plus_friends_1 b){
+PURE INLINE int struct_equal_val_plus_friends_1 (struct val_plus_friends_1 a, struct val_plus_friends_1 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_1));
 }
-INLINE int struct_equal_val_plus_friends_2 (struct val_plus_friends_2 a, struct val_plus_friends_2 b){
+PURE INLINE int struct_equal_val_plus_friends_2 (struct val_plus_friends_2 a, struct val_plus_friends_2 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_2));
 }
-INLINE int struct_equal_val_plus_friends_3 (struct val_plus_friends_3 a, struct val_plus_friends_3 b){
+PURE INLINE int struct_equal_val_plus_friends_3 (struct val_plus_friends_3 a, struct val_plus_friends_3 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_3));
 }
-INLINE int struct_equal_val_plus_friends_4 (struct val_plus_friends_4 a, struct val_plus_friends_4 b){
+PURE INLINE int struct_equal_val_plus_friends_4 (struct val_plus_friends_4 a, struct val_plus_friends_4 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_4));
 }
-INLINE int struct_equal_val_plus_friends_5 (struct val_plus_friends_5 a, struct val_plus_friends_5 b){
+PURE INLINE int struct_equal_val_plus_friends_5 (struct val_plus_friends_5 a, struct val_plus_friends_5 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_5));
 }
-INLINE int struct_equal_val_plus_friends_6 (struct val_plus_friends_6 a, struct val_plus_friends_6 b){
+PURE INLINE int struct_equal_val_plus_friends_6 (struct val_plus_friends_6 a, struct val_plus_friends_6 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_6));
 }
-INLINE int struct_equal_val_plus_friends_7 (struct val_plus_friends_7 a, struct val_plus_friends_7 b){
+PURE INLINE int struct_equal_val_plus_friends_7 (struct val_plus_friends_7 a, struct val_plus_friends_7 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_7));
 }
-INLINE int struct_equal_val_plus_friends_8 (struct val_plus_friends_8 a, struct val_plus_friends_8 b){
+PURE INLINE int struct_equal_val_plus_friends_8 (struct val_plus_friends_8 a, struct val_plus_friends_8 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_8));
 }
-INLINE int struct_equal_val_plus_friends_9 (struct val_plus_friends_9 a, struct val_plus_friends_9 b){
+PURE INLINE int struct_equal_val_plus_friends_9 (struct val_plus_friends_9 a, struct val_plus_friends_9 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_9));
 }
-INLINE int struct_equal_val_plus_friends_10 (struct val_plus_friends_10 a, struct val_plus_friends_10 b){
+PURE INLINE int struct_equal_val_plus_friends_10 (struct val_plus_friends_10 a, struct val_plus_friends_10 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_10));
 }
-INLINE int struct_equal_val_plus_friends_11 (struct val_plus_friends_11 a, struct val_plus_friends_11 b){
+PURE INLINE int struct_equal_val_plus_friends_11 (struct val_plus_friends_11 a, struct val_plus_friends_11 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_11));
 }
-INLINE int struct_equal_val_plus_friends_12 (struct val_plus_friends_12 a, struct val_plus_friends_12 b){
+PURE INLINE int struct_equal_val_plus_friends_12 (struct val_plus_friends_12 a, struct val_plus_friends_12 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_12));
 }
-INLINE uint32_t struct_hash_friends_0 (struct friends_0 val){
+PURE INLINE uint32_t struct_hash_friends_0 (struct friends_0 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_0));
 }
-INLINE uint32_t struct_hash_friends_1 (struct friends_1 val){
+PURE INLINE uint32_t struct_hash_friends_1 (struct friends_1 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_1));
 }
-INLINE uint32_t struct_hash_friends_2 (struct friends_2 val){
+PURE INLINE uint32_t struct_hash_friends_2 (struct friends_2 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_2));
 }
-INLINE uint32_t struct_hash_friends_3 (struct friends_3 val){
+PURE INLINE uint32_t struct_hash_friends_3 (struct friends_3 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_3));
 }
-INLINE uint32_t struct_hash_friends_4 (struct friends_4 val){
+PURE INLINE uint32_t struct_hash_friends_4 (struct friends_4 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_4));
 }
-INLINE uint32_t struct_hash_friends_5 (struct friends_5 val){
+PURE INLINE uint32_t struct_hash_friends_5 (struct friends_5 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_5));
 }
-INLINE uint32_t struct_hash_friends_6 (struct friends_6 val){
+PURE INLINE uint32_t struct_hash_friends_6 (struct friends_6 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_6));
 }
-INLINE uint32_t struct_hash_friends_7 (struct friends_7 val){
+PURE INLINE uint32_t struct_hash_friends_7 (struct friends_7 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_7));
 }
-INLINE uint32_t struct_hash_friends_8 (struct friends_8 val){
+PURE INLINE uint32_t struct_hash_friends_8 (struct friends_8 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_8));
 }
-INLINE uint32_t struct_hash_friends_9 (struct friends_9 val){
+PURE INLINE uint32_t struct_hash_friends_9 (struct friends_9 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_9));
 }
-INLINE uint32_t struct_hash_friends_10 (struct friends_10 val){
+PURE INLINE uint32_t struct_hash_friends_10 (struct friends_10 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_10));
 }
-INLINE uint32_t struct_hash_friends_11 (struct friends_11 val){
+PURE INLINE uint32_t struct_hash_friends_11 (struct friends_11 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_11));
 }
-INLINE uint32_t struct_hash_friends_12 (struct friends_12 val){
+PURE INLINE uint32_t struct_hash_friends_12 (struct friends_12 val){
     return jenkins_hash((char *)(&val), sizeof(struct friends_12));
 }
-INLINE int struct_equal_friends_0 (struct friends_0 a, struct friends_0 b){
+PURE INLINE int struct_equal_friends_0 (struct friends_0 a, struct friends_0 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_0));
 }
-INLINE int struct_equal_friends_1 (struct friends_1 a, struct friends_1 b){
+PURE INLINE int struct_equal_friends_1 (struct friends_1 a, struct friends_1 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_1));
 }
-INLINE int struct_equal_friends_2 (struct friends_2 a, struct friends_2 b){
+PURE INLINE int struct_equal_friends_2 (struct friends_2 a, struct friends_2 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_2));
 }
-INLINE int struct_equal_friends_3 (struct friends_3 a, struct friends_3 b){
+PURE INLINE int struct_equal_friends_3 (struct friends_3 a, struct friends_3 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_3));
 }
-INLINE int struct_equal_friends_4 (struct friends_4 a, struct friends_4 b){
+PURE INLINE int struct_equal_friends_4 (struct friends_4 a, struct friends_4 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_4));
 }
-INLINE int struct_equal_friends_5 (struct friends_5 a, struct friends_5 b){
+PURE INLINE int struct_equal_friends_5 (struct friends_5 a, struct friends_5 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_5));
 }
-INLINE int struct_equal_friends_6 (struct friends_6 a, struct friends_6 b){
+PURE INLINE int struct_equal_friends_6 (struct friends_6 a, struct friends_6 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_6));
 }
-INLINE int struct_equal_friends_7 (struct friends_7 a, struct friends_7 b){
+PURE INLINE int struct_equal_friends_7 (struct friends_7 a, struct friends_7 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_7));
 }
-INLINE int struct_equal_friends_8 (struct friends_8 a, struct friends_8 b){
+PURE INLINE int struct_equal_friends_8 (struct friends_8 a, struct friends_8 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_8));
 }
-INLINE int struct_equal_friends_9 (struct friends_9 a, struct friends_9 b){
+PURE INLINE int struct_equal_friends_9 (struct friends_9 a, struct friends_9 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_9));
 }
-INLINE int struct_equal_friends_10 (struct friends_10 a, struct friends_10 b){
+PURE INLINE int struct_equal_friends_10 (struct friends_10 a, struct friends_10 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_10));
 }
-INLINE int struct_equal_friends_11 (struct friends_11 a, struct friends_11 b){
+PURE INLINE int struct_equal_friends_11 (struct friends_11 a, struct friends_11 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_11));
 }
-INLINE int struct_equal_friends_12 (struct friends_12 a, struct friends_12 b){
+PURE INLINE int struct_equal_friends_12 (struct friends_12 a, struct friends_12 b){
     return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_12));
 }
 KHASH_INIT(value_to_friends_0, struct value_0, struct friends_0, 1, struct_hash_value_0, struct_equal_value_0)
@@ -679,6 +695,19 @@ int main(int argc, char ** argv){
     khash_t(val_plus_friends_to_count_10) *val_to_friends_to_count_10 = kh_init(val_plus_friends_to_count_10);
     khash_t(val_plus_friends_to_count_11) *val_to_friends_to_count_11 = kh_init(val_plus_friends_to_count_11);
     khash_t(val_plus_friends_to_count_12) *val_to_friends_to_count_12 = kh_init(val_plus_friends_to_count_12);
+    khash_t(friends_to_count_0) *friends_to_count_0 = kh_init(friends_to_count_0);
+    khash_t(friends_to_count_1) *friends_to_count_1 = kh_init(friends_to_count_1);
+    khash_t(friends_to_count_2) *friends_to_count_2 = kh_init(friends_to_count_2);
+    khash_t(friends_to_count_3) *friends_to_count_3 = kh_init(friends_to_count_3);
+    khash_t(friends_to_count_4) *friends_to_count_4 = kh_init(friends_to_count_4);
+    khash_t(friends_to_count_5) *friends_to_count_5 = kh_init(friends_to_count_5);
+    khash_t(friends_to_count_6) *friends_to_count_6 = kh_init(friends_to_count_6);
+    khash_t(friends_to_count_7) *friends_to_count_7 = kh_init(friends_to_count_7);
+    khash_t(friends_to_count_8) *friends_to_count_8 = kh_init(friends_to_count_8);
+    khash_t(friends_to_count_9) *friends_to_count_9 = kh_init(friends_to_count_9);
+    khash_t(friends_to_count_10) *friends_to_count_10 = kh_init(friends_to_count_10);
+    khash_t(friends_to_count_11) *friends_to_count_11 = kh_init(friends_to_count_11);
+    khash_t(friends_to_count_12) *friends_to_count_12 = kh_init(friends_to_count_12);
     typedef uint32_t driving_col_as_number;    int r=0;
 
     driving_col_as_number previous_driving_col_number=0;
@@ -999,67 +1028,516 @@ int main(int argc, char ** argv){
                         driving_col_as_number new_val = previous_driving_col_number + diff;
 
                         previous_driving_col_number = new_val;
-
+                        //Decode the number into a str
                         uint8_t buffer[driving_column_bytes]={0};
                         for(int i=driving_column_bytes-1;i>=0;i--){
                             buffer[i] = new_val & 0xFF;
                             new_val >>= 8;
                         }
-
+                        //Add it to the pool
                         bstring val_str = blk2bstr(buffer,driving_column_bytes);
                         driving_col_string_pool[col_to_string_pool_length[c]] = val_str;
                         col_to_string_pool_length[c]++;
                     }else{
                         //Not delta encoded, just a plain old Lit
+                        int length = literal_lengths[c];
+                        uint8_t bits_per_char=8;
+                        switch(c){
+                            case 0: {bits_per_char=4;break;}
+                            case 1: {bits_per_char=4;break;}
+                            case 2: {bits_per_char=2;break;}
+                            case 4: {bits_per_char=4;break;}
+                            case 5: {bits_per_char=4;break;}
+                            case 6: {bits_per_char=4;break;}
+                            case 8: {bits_per_char=3;break;}
+                            case 9: {bits_per_char=2;break;}
+                            case 10: {bits_per_char=6;break;}
+                            case 11: {bits_per_char=6;break;}
+                            case 12: {bits_per_char=5;break;}
+                            case 13: {bits_per_char=4;break;}
+                            case 14: {bits_per_char=4;break;}
+                            case 15: {bits_per_char=4;break;}
+                            case 16: {bits_per_char=4;break;}
+                            case 17: {bits_per_char=4;break;}
+                            case 18: {bits_per_char=2;break;}
+                        }
 
-                        //MORE HERE
+                        uint8_t buffer[length];
+
+                        for (int i=0;i<length;i++){
+                            uint8_t idx = read_bits_as_number(BINARY2, bits_per_char);
+                            uint8_t this_char=0;
+                            if(bits_per_char==8){
+                                this_char=idx;//Default in case there is no alphabet
+                            }else{
+                                switch(c){
+                                   case 0: {
+                                       switch(idx){
+                                           case 0: {this_char = 50;break;}
+                                           case 1: {this_char = 51;break;}
+                                           case 2: {this_char = 48;break;}
+                                           case 3: {this_char = 56;break;}
+                                           case 4: {this_char = 49;break;}
+                                           case 5: {this_char = 57;break;}
+                                           case 6: {this_char = 54;break;}
+                                           case 7: {this_char = 55;break;}
+                                           case 8: {this_char = 52;break;}
+                                           case 9: {this_char = 53;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 1: {
+                                       switch(idx){
+                                           case 0: {this_char = 54;break;}
+                                           case 1: {this_char = 55;break;}
+                                           case 2: {this_char = 53;break;}
+                                           case 3: {this_char = 51;break;}
+                                           case 4: {this_char = 52;break;}
+                                           case 5: {this_char = 50;break;}
+                                           case 6: {this_char = 49;break;}
+                                           case 7: {this_char = 57;break;}
+                                           case 8: {this_char = 48;break;}
+                                           case 9: {this_char = 56;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 2: {
+                                       switch(idx){
+                                           case 0: {this_char = 49;break;}
+                                           case 1: {this_char = 51;break;}
+                                           case 2: {this_char = 50;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 4: {
+                                       switch(idx){
+                                           case 0: {this_char = 52;break;}
+                                           case 1: {this_char = 50;break;}
+                                           case 2: {this_char = 56;break;}
+                                           case 3: {this_char = 54;break;}
+                                           case 4: {this_char = 51;break;}
+                                           case 5: {this_char = 48;break;}
+                                           case 6: {this_char = 49;break;}
+                                           case 7: {this_char = 53;break;}
+                                           case 8: {this_char = 55;break;}
+                                           case 9: {this_char = 57;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 5: {
+                                       switch(idx){
+                                           case 0: {this_char = 52;break;}
+                                           case 1: {this_char = 48;break;}
+                                           case 2: {this_char = 54;break;}
+                                           case 3: {this_char = 53;break;}
+                                           case 4: {this_char = 51;break;}
+                                           case 5: {this_char = 50;break;}
+                                           case 6: {this_char = 56;break;}
+                                           case 7: {this_char = 57;break;}
+                                           case 8: {this_char = 49;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 6: {
+                                       switch(idx){
+                                           case 0: {this_char = 50;break;}
+                                           case 1: {this_char = 51;break;}
+                                           case 2: {this_char = 48;break;}
+                                           case 3: {this_char = 57;break;}
+                                           case 4: {this_char = 54;break;}
+                                           case 5: {this_char = 56;break;}
+                                           case 6: {this_char = 49;break;}
+                                           case 7: {this_char = 55;break;}
+                                           case 8: {this_char = 52;break;}
+                                           case 9: {this_char = 53;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 8: {
+                                       switch(idx){
+                                           case 0: {this_char = 101;break;}
+                                           case 1: {this_char = 78;break;}
+                                           case 2: {this_char = 115;break;}
+                                           case 3: {this_char = 89;break;}
+                                           case 4: {this_char = 111;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 9: {
+                                       switch(idx){
+                                           case 0: {this_char = 49;break;}
+                                           case 1: {this_char = 48;break;}
+                                           case 2: {this_char = 50;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 10: {
+                                       switch(idx){
+                                           case 0: {this_char = 105;break;}
+                                           case 1: {this_char = 110;break;}
+                                           case 2: {this_char = 87;break;}
+                                           case 3: {this_char = 32;break;}
+                                           case 4: {this_char = 97;break;}
+                                           case 5: {this_char = 83;break;}
+                                           case 6: {this_char = 116;break;}
+                                           case 7: {this_char = 79;break;}
+                                           case 8: {this_char = 111;break;}
+                                           case 9: {this_char = 100;break;}
+                                           case 10: {this_char = 101;break;}
+                                           case 11: {this_char = 115;break;}
+                                           case 12: {this_char = 80;break;}
+                                           case 13: {this_char = 56;break;}
+                                           case 14: {this_char = 84;break;}
+                                           case 15: {this_char = 50;break;}
+                                           case 16: {this_char = 107;break;}
+                                           case 17: {this_char = 120;break;}
+                                           case 18: {this_char = 77;break;}
+                                           case 19: {this_char = 88;break;}
+                                           case 20: {this_char = 51;break;}
+                                           case 21: {this_char = 108;break;}
+                                           case 22: {this_char = 78;break;}
+                                           case 23: {this_char = 55;break;}
+                                           case 24: {this_char = 121;break;}
+                                           case 25: {this_char = 117;break;}
+                                           case 26: {this_char = 49;break;}
+                                           case 27: {this_char = 99;break;}
+                                           case 28: {this_char = 98;break;}
+                                           case 29: {this_char = 73;break;}
+                                           case 30: {this_char = 71;break;}
+                                           case 31: {this_char = 85;break;}
+                                           case 32: {this_char = 119;break;}
+                                           case 33: {this_char = 114;break;}
+                                           case 34: {this_char = 86;break;}
+                                           case 35: {this_char = 104;break;}
+                                           case 36: {this_char = 48;break;}
+                                           case 37: {this_char = 46;break;}
+                                           case 38: {this_char = 76;break;}
+                                           case 39: {this_char = 65;break;}
+                                           case 40: {this_char = 109;break;}
+                                           case 41: {this_char = 57;break;}
+                                           case 42: {this_char = 82;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 11: {
+                                       switch(idx){
+                                           case 0: {this_char = 101;break;}
+                                           case 1: {this_char = 114;break;}
+                                           case 2: {this_char = 97;break;}
+                                           case 3: {this_char = 111;break;}
+                                           case 4: {this_char = 105;break;}
+                                           case 5: {this_char = 83;break;}
+                                           case 6: {this_char = 102;break;}
+                                           case 7: {this_char = 116;break;}
+                                           case 8: {this_char = 115;break;}
+                                           case 9: {this_char = 66;break;}
+                                           case 10: {this_char = 108;break;}
+                                           case 11: {this_char = 99;break;}
+                                           case 12: {this_char = 70;break;}
+                                           case 13: {this_char = 78;break;}
+                                           case 14: {this_char = 77;break;}
+                                           case 15: {this_char = 79;break;}
+                                           case 16: {this_char = 32;break;}
+                                           case 17: {this_char = 112;break;}
+                                           case 18: {this_char = 73;break;}
+                                           case 19: {this_char = 119;break;}
+                                           case 20: {this_char = 120;break;}
+                                           case 21: {this_char = 69;break;}
+                                           case 22: {this_char = 121;break;}
+                                           case 23: {this_char = 104;break;}
+                                           case 24: {this_char = 107;break;}
+                                           case 25: {this_char = 67;break;}
+                                           case 26: {this_char = 48;break;}
+                                           case 27: {this_char = 76;break;}
+                                           case 28: {this_char = 65;break;}
+                                           case 29: {this_char = 110;break;}
+                                           case 30: {this_char = 87;break;}
+                                           case 31: {this_char = 109;break;}
+                                           case 32: {this_char = 98;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 12: {
+                                       switch(idx){
+                                           case 0: {this_char = 97;break;}
+                                           case 1: {this_char = 112;break;}
+                                           case 2: {this_char = 114;break;}
+                                           case 3: {this_char = 100;break;}
+                                           case 4: {this_char = 105;break;}
+                                           case 5: {this_char = 101;break;}
+                                           case 6: {this_char = 110;break;}
+                                           case 7: {this_char = 98;break;}
+                                           case 8: {this_char = 111;break;}
+                                           case 9: {this_char = 119;break;}
+                                           case 10: {this_char = 121;break;}
+                                           case 11: {this_char = 107;break;}
+                                           case 12: {this_char = 104;break;}
+                                           case 13: {this_char = 48;break;}
+                                           case 14: {this_char = 51;break;}
+                                           case 15: {this_char = 115;break;}
+                                           case 16: {this_char = 108;break;}
+                                           case 17: {this_char = 99;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 13: {
+                                       switch(idx){
+                                           case 0: {this_char = 83;break;}
+                                           case 1: {this_char = 50;break;}
+                                           case 2: {this_char = 53;break;}
+                                           case 3: {this_char = 49;break;}
+                                           case 4: {this_char = 48;break;}
+                                           case 5: {this_char = 52;break;}
+                                           case 6: {this_char = 51;break;}
+                                           case 7: {this_char = 56;break;}
+                                           case 8: {this_char = 57;break;}
+                                           case 9: {this_char = 55;break;}
+                                           case 10: {this_char = 54;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 14: {
+                                       switch(idx){
+                                           case 0: {this_char = 68;break;}
+                                           case 1: {this_char = 48;break;}
+                                           case 2: {this_char = 53;break;}
+                                           case 3: {this_char = 54;break;}
+                                           case 4: {this_char = 50;break;}
+                                           case 5: {this_char = 55;break;}
+                                           case 6: {this_char = 56;break;}
+                                           case 7: {this_char = 52;break;}
+                                           case 8: {this_char = 49;break;}
+                                           case 9: {this_char = 51;break;}
+                                           case 10: {this_char = 57;break;}
+                                           case 11: {this_char = 45;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 15: {
+                                       switch(idx){
+                                           case 0: {this_char = 48;break;}
+                                           case 1: {this_char = 49;break;}
+                                           case 2: {this_char = 124;break;}
+                                           case 3: {this_char = 58;break;}
+                                           case 4: {this_char = 67;break;}
+                                           case 5: {this_char = 51;break;}
+                                           case 6: {this_char = 54;break;}
+                                           case 7: {this_char = 57;break;}
+                                           case 8: {this_char = 55;break;}
+                                           case 9: {this_char = 50;break;}
+                                           case 10: {this_char = 56;break;}
+                                           case 11: {this_char = 53;break;}
+                                           case 12: {this_char = 52;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 16: {
+                                       switch(idx){
+                                           case 0: {this_char = 48;break;}
+                                           case 1: {this_char = 124;break;}
+                                           case 2: {this_char = 58;break;}
+                                           case 3: {this_char = 65;break;}
+                                           case 4: {this_char = 49;break;}
+                                           case 5: {this_char = 54;break;}
+                                           case 6: {this_char = 55;break;}
+                                           case 7: {this_char = 51;break;}
+                                           case 8: {this_char = 57;break;}
+                                           case 9: {this_char = 50;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 17: {
+                                       switch(idx){
+                                           case 0: {this_char = 48;break;}
+                                           case 1: {this_char = 124;break;}
+                                           case 2: {this_char = 58;break;}
+                                           case 3: {this_char = 49;break;}
+                                           case 4: {this_char = 51;break;}
+                                           case 5: {this_char = 82;break;}
+                                           case 6: {this_char = 54;break;}
+                                           case 7: {this_char = 57;break;}
+                                           case 8: {this_char = 55;break;}
+                                           case 9: {this_char = 53;break;}
+                                           case 10: {this_char = 50;break;}
+                                           case 11: {this_char = 52;break;}
+                                           case 12: {this_char = 56;break;}
+                                       }
+                                       break;
+                                   }
+                                   case 18: {
+                                       switch(idx){
+                                           case 0: {this_char = 70;break;}
+                                           case 1: {this_char = 77;break;}
+                                           case 2: {this_char = 88;break;}
+                                       }
+                                       break;
+                                   }
+                                }
+                            }
+                            buffer[i]=this_char;
+                        }
+
+                        //Add it to the pool
+                        bstring val_str = blk2bstr(buffer,length);
+                        int new_last_idx = col_to_string_pool_length[c];
+                        switch(c){
+                            case 0: {string_pool_0[new_last_idx] = val_str;break;}
+                            case 1: {string_pool_1[new_last_idx] = val_str;break;}
+                            case 2: {string_pool_2[new_last_idx] = val_str;break;}
+                            case 3: {string_pool_3[new_last_idx] = val_str;break;}
+                            case 4: {string_pool_4[new_last_idx] = val_str;break;}
+                            case 5: {string_pool_5[new_last_idx] = val_str;break;}
+                            case 6: {string_pool_6[new_last_idx] = val_str;break;}
+                            case 7: {string_pool_7[new_last_idx] = val_str;break;}
+                            case 8: {string_pool_8[new_last_idx] = val_str;break;}
+                            case 9: {string_pool_9[new_last_idx] = val_str;break;}
+                            case 10: {string_pool_10[new_last_idx] = val_str;break;}
+                            case 11: {string_pool_11[new_last_idx] = val_str;break;}
+                            case 12: {string_pool_12[new_last_idx] = val_str;break;}
+                            case 13: {string_pool_13[new_last_idx] = val_str;break;}
+                            case 14: {string_pool_14[new_last_idx] = val_str;break;}
+                            case 15: {string_pool_15[new_last_idx] = val_str;break;}
+                            case 16: {string_pool_16[new_last_idx] = val_str;break;}
+                            case 17: {string_pool_17[new_last_idx] = val_str;break;}
+                            case 18: {string_pool_18[new_last_idx] = val_str;break;}
+                        }
+                        col_to_string_pool_length[c]++;
 
                         if((c == driving_column) && (r==0)){
                             //only on the first row will this happen
                             driving_col_as_number num=0;
-                            bstring val_str = driving_col_string_pool[val];
                             for(int i=0;i<driving_column_bytes;i++){
                                 num<<=8;
-                                num+=((uint8_t *)(val_str->data))[i];
+                                num+=buffer[i];
                             }
                             previous_driving_col_number = num;
                         }
                     }
-                    /*
-                    if($c == $driving_column and $r!=0){
-                        #only encode the difference
-                        my $diff = count::from_rice(sub {read_bits($BINARY2,1)}, $driving_col_rice_bits);
-                        $val = count::num2str(count::str2num($previous_row[$c])+$diff,$col_to_max_length[$driving_column]);
-                    }else{
-                        my $length = $literal_lengths[$c];
-                        $length = oct("0b$length");
 
-
-                        if(defined $col_to_literal_bits[$c]){
-                            my $bits_per_char=$col_to_literal_bits[$c];
-                            $val='';
-                            for (my $i=0;$i<$length;$i++){
-                                my $bits = read_bits($BINARY2,$bits_per_char);
-                                $val .= $col_to_alpha_idx_to_char[$c]->[oct("0b$bits")];
-                            }
-                        }else{
-                            $val = read_bits($BINARY2,$length*8);
-                            $val = count::bitstring_to_bytes($val);
+                    if(do_store_bits & (one<<c)){
+                        int last_inserted_idx=col_to_string_pool_length[c]-1;
+                        int new_stored_idx = col_to_n_stored_vals[c];
+                        switch(c){
+                            case 0: {stored_vals_0[new_stored_idx]=last_inserted_idx;break;}
+                            case 1: {stored_vals_1[new_stored_idx]=last_inserted_idx;break;}
+                            case 2: {stored_vals_2[new_stored_idx]=last_inserted_idx;break;}
+                            case 3: {stored_vals_3[new_stored_idx]=last_inserted_idx;break;}
+                            case 4: {stored_vals_4[new_stored_idx]=last_inserted_idx;break;}
+                            case 5: {stored_vals_5[new_stored_idx]=last_inserted_idx;break;}
+                            case 6: {stored_vals_6[new_stored_idx]=last_inserted_idx;break;}
+                            case 7: {stored_vals_7[new_stored_idx]=last_inserted_idx;break;}
+                            case 8: {stored_vals_8[new_stored_idx]=last_inserted_idx;break;}
+                            case 9: {stored_vals_9[new_stored_idx]=last_inserted_idx;break;}
+                            case 10: {stored_vals_10[new_stored_idx]=last_inserted_idx;break;}
+                            case 11: {stored_vals_11[new_stored_idx]=last_inserted_idx;break;}
+                            case 12: {stored_vals_12[new_stored_idx]=last_inserted_idx;break;}
+                            case 13: {stored_vals_13[new_stored_idx]=last_inserted_idx;break;}
+                            case 14: {stored_vals_14[new_stored_idx]=last_inserted_idx;break;}
+                            case 15: {stored_vals_15[new_stored_idx]=last_inserted_idx;break;}
+                            case 16: {stored_vals_16[new_stored_idx]=last_inserted_idx;break;}
+                            case 17: {stored_vals_17[new_stored_idx]=last_inserted_idx;break;}
+                            case 18: {stored_vals_18[new_stored_idx]=last_inserted_idx;break;}
                         }
+                        col_to_n_stored_vals[c]++;
                     }
 
-                    push @{$col_to_stored_vals[$c]}, $val;
-
-                    if($do_store_bits[$c]==0){
-                        #warn "DELETING\n";
-                        my $delete_idx = $#{$col_to_stored_vals[$c]};
-                        splice(@{$col_to_stored_vals[$c]}, $delete_idx, 1);
-                    }
-                    */
                 }
             }
-
+            vals[c]=val;
         }
+        seek_till_byte_boundary(BINARY2);
+        seek_till_byte_boundary(BINARY);
+
+        //fill in predicted vals
+        //store previous row vals
+        //check for undef vals
+        //store new predictor vals
+
+
+        {
+            struct friends_0 friends={vals[1],vals[2],vals[3],vals[8],vals[10],vals[11],vals[12],vals[15],vals[16],vals[17],vals[18]};
+            struct value_0 value={vals[7]};
+            struct val_plus_friends_0 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_0, val_to_friends_to_count_0, val_plus_friends);
+        }
+        {
+            struct friends_1 friends={vals[10],vals[11],vals[12],vals[15],vals[16],vals[17],vals[18]};
+            struct value_1 value={vals[7]};
+            struct val_plus_friends_1 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_1, val_to_friends_to_count_1, val_plus_friends);
+        }
+        {
+            struct friends_2 friends={vals[8],vals[10],vals[11],vals[12]};
+            struct value_2 value={vals[7]};
+            struct val_plus_friends_2 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_2, val_to_friends_to_count_2, val_plus_friends);
+        }
+        {
+            struct friends_3 friends={vals[1],vals[2],vals[4],vals[8],vals[10],vals[11],vals[12],vals[13],vals[14],vals[15],vals[16],vals[17],vals[18]};
+            struct value_3 value={vals[3]};
+            struct val_plus_friends_3 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_3, val_to_friends_to_count_3, val_plus_friends);
+        }
+        {
+            struct friends_4 friends={vals[4],vals[13],vals[14]};
+            struct value_4 value={vals[3]};
+            struct val_plus_friends_4 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_4, val_to_friends_to_count_4, val_plus_friends);
+        }
+        {
+            struct friends_5 friends={vals[4],vals[11]};
+            struct value_5 value={vals[1]};
+            struct val_plus_friends_5 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_5, val_to_friends_to_count_5, val_plus_friends);
+        }
+        {
+            struct friends_6 friends={vals[18]};
+            struct value_6 value={vals[1]};
+            struct val_plus_friends_6 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_6, val_to_friends_to_count_6, val_plus_friends);
+        }
+        {
+            struct friends_7 friends={vals[16],vals[17]};
+            struct value_7 value={vals[15]};
+            struct val_plus_friends_7 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_7, val_to_friends_to_count_7, val_plus_friends);
+        }
+        {
+            struct friends_8 friends={vals[10],vals[11],vals[12]};
+            struct value_8 value={vals[8]};
+            struct val_plus_friends_8 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_8, val_to_friends_to_count_8, val_plus_friends);
+        }
+        {
+            struct friends_9 friends={vals[11]};
+            struct value_9 value={vals[10]};
+            struct val_plus_friends_9 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_9, val_to_friends_to_count_9, val_plus_friends);
+        }
+        {
+            struct friends_10 friends={vals[4],vals[13]};
+            struct value_10 value={vals[14]};
+            struct val_plus_friends_10 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_10, val_to_friends_to_count_10, val_plus_friends);
+        }
+        {
+            struct friends_11 friends={vals[4]};
+            struct value_11 value={vals[13]};
+            struct val_plus_friends_11 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_11, val_to_friends_to_count_11, val_plus_friends);
+        }
+        {
+            struct friends_12 friends={vals[0]};
+            struct value_12 value={vals[1],vals[6],vals[4]};
+            struct val_plus_friends_12 val_plus_friends = {value,friends};
+            int new_count = kh_increment(val_plus_friends_to_count_12, val_to_friends_to_count_12, val_plus_friends);
+        }
+        //decode columns
+        //print output
+        //add row checksum
+        //- end row loop
+        //check final row count
+        //check row checksum
         while(dupes>0){
             r++;
             dupes--;

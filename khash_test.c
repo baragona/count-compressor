@@ -14,18 +14,18 @@ int main() {
 	puts("dong\n");
 	//sleep(1000);
 	k = kh_put(the_hash, h, 5, &ret);
-	puts("dong\n");
-	if (!ret) {kh_del(the_hash, h, k);puts("dong\n");}
+
+	if (!ret) {kh_del(the_hash, h, k)}
 	kh_value(h, k) = 10;
-	puts("dong\n");
+
 	k = kh_get(the_hash, h, 10);
-	puts("dong\n");
+
 	is_missing = (k == kh_end(h));
-	puts("dong\n");
+
 	k = kh_get(the_hash, h, 5);
-	puts("dong\n");
+
 	kh_del(the_hash, h, k);
-	puts("dong\n");
+
 	/*
 	for (k = kh_begin(h); k != kh_end(h); ++k){
 		if (kh_exist(h, k)) {kh_value(h, k) = 1;}
