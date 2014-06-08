@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <errno.h>
 
 //#include <unordered_map>
 
@@ -30,16 +31,21 @@ KHASH_INIT(bstring_to_int, bstring, int, 1, calc_bstring_hash, biseq)
 
 
 //returns new value
-#define kh_increment(type,ptr,value) ({khiter_t k = kh_get(type, ptr, value);\
-int is_missing = (k == kh_end(ptr));\
-if(is_missing){\
-    int ret;\
-    k = kh_put(type, ptr, value, &ret);\
-    kh_value(ptr,k)=0;\
-}\
-kh_value(ptr,k)++;kh_value(ptr,k);})
+#define kh_increment(type,ptr,value) ({\
+    khiter_t k = kh_get(type, ptr, value);\
+    int is_missing = (k == kh_end(ptr));\
+    if(is_missing){\
+        int ret;\
+        k = kh_put(type, ptr, value, &ret);\
+        kh_value(ptr,k)=0;\
+    }\
+    kh_value(ptr,k)++;kh_value(ptr,k);})
 
-
+//returns pointer to the value, or null
+#define kh_get_val_ptr(type,ptr,value) ({\
+    khiter_t k = kh_get(type, ptr, value);\
+    int is_missing = (k == kh_end(ptr));\
+    is_missing ? NULL : &(kh_value(ptr,k));})
 
 
     typedef uint16_t	string_id_0;
@@ -523,6 +529,10 @@ unsigned char fd_to_ibuff_bit_mask[MAX_FDS];
 INLINE int read_some_bytes(int fd){
     //Only call when ibuff is empty
     int amt = read(fd,fd_to_ibuff[fd],64*1024-1);
+    if(amt==-1){
+        fprintf(stderr, "read error on fd %d, %d\n",fd,errno);
+        exit(1);
+    }
     fd_to_ibuff_len[fd]=amt;
     fd_to_ibuff_pos[fd]=0;
     fd_to_ibuff_bit_pos[fd]=0;
@@ -605,6 +615,9 @@ int main(int argc, char ** argv){
 
     const int BINARY = 4;
     const int BINARY2 = 5;
+
+
+
     const __uint128_t one = 1;
     //__uint128_t test=one<<5;
 
@@ -708,6 +721,19 @@ int main(int argc, char ** argv){
     khash_t(friends_to_count_10) *friends_to_count_10 = kh_init(friends_to_count_10);
     khash_t(friends_to_count_11) *friends_to_count_11 = kh_init(friends_to_count_11);
     khash_t(friends_to_count_12) *friends_to_count_12 = kh_init(friends_to_count_12);
+    struct friends_0 most_popular_friends_0={0};
+    struct friends_1 most_popular_friends_1={0};
+    struct friends_2 most_popular_friends_2={0};
+    struct friends_3 most_popular_friends_3={0};
+    struct friends_4 most_popular_friends_4={0};
+    struct friends_5 most_popular_friends_5={0};
+    struct friends_6 most_popular_friends_6={0};
+    struct friends_7 most_popular_friends_7={0};
+    struct friends_8 most_popular_friends_8={0};
+    struct friends_9 most_popular_friends_9={0};
+    struct friends_10 most_popular_friends_10={0};
+    struct friends_11 most_popular_friends_11={0};
+    struct friends_12 most_popular_friends_12={0};
     typedef uint32_t driving_col_as_number;    int r=0;
 
     driving_col_as_number previous_driving_col_number=0;
@@ -724,21 +750,22 @@ int main(int argc, char ** argv){
             int need_predictor_bit=1;
             
             switch(i){
-                case 0: {if(0!=((~col_was_predicted) & ((one<<1)|(one<<2)|(one<<3)|(one<<8)|(one<<10)|(one<<11)|(one<<12)|(one<<15)|(one<<16)|(one<<17)|(one<<18)))){need_predictor_bit=0;} break;}
-                case 1: {if(0!=((~col_was_predicted) & ((one<<10)|(one<<11)|(one<<12)|(one<<15)|(one<<16)|(one<<17)|(one<<18)))){need_predictor_bit=0;} break;}
-                case 2: {if(0!=((~col_was_predicted) & ((one<<8)|(one<<10)|(one<<11)|(one<<12)))){need_predictor_bit=0;} break;}
-                case 3: {if(0!=((~col_was_predicted) & ((one<<1)|(one<<2)|(one<<4)|(one<<8)|(one<<10)|(one<<11)|(one<<12)|(one<<13)|(one<<14)|(one<<15)|(one<<16)|(one<<17)|(one<<18)))){need_predictor_bit=0;} break;}
-                case 4: {if(0!=((~col_was_predicted) & ((one<<4)|(one<<13)|(one<<14)))){need_predictor_bit=0;} break;}
-                case 5: {if(0!=((~col_was_predicted) & ((one<<4)|(one<<11)))){need_predictor_bit=0;} break;}
-                case 6: {if(0!=((~col_was_predicted) & ((one<<18)))){need_predictor_bit=0;} break;}
-                case 7: {if(0!=((~col_was_predicted) & ((one<<16)|(one<<17)))){need_predictor_bit=0;} break;}
-                case 8: {if(0!=((~col_was_predicted) & ((one<<10)|(one<<11)|(one<<12)))){need_predictor_bit=0;} break;}
-                case 9: {if(0!=((~col_was_predicted) & ((one<<11)))){need_predictor_bit=0;} break;}
-                case 10: {if(0!=((~col_was_predicted) & ((one<<4)|(one<<13)))){need_predictor_bit=0;} break;}
-                case 11: {if(0!=((~col_was_predicted) & ((one<<4)))){need_predictor_bit=0;} break;}
-                case 12: {if(0!=((~col_was_predicted) & ((one<<0)))){need_predictor_bit=0;} break;}
+                case 0: {if(0==((~col_was_predicted) & ((one<<1)|(one<<2)|(one<<3)|(one<<8)|(one<<10)|(one<<11)|(one<<12)|(one<<15)|(one<<16)|(one<<17)|(one<<18)))){need_predictor_bit=0;} break;}
+                case 1: {if(0==((~col_was_predicted) & ((one<<10)|(one<<11)|(one<<12)|(one<<15)|(one<<16)|(one<<17)|(one<<18)))){need_predictor_bit=0;} break;}
+                case 2: {if(0==((~col_was_predicted) & ((one<<8)|(one<<10)|(one<<11)|(one<<12)))){need_predictor_bit=0;} break;}
+                case 3: {if(0==((~col_was_predicted) & ((one<<1)|(one<<2)|(one<<4)|(one<<8)|(one<<10)|(one<<11)|(one<<12)|(one<<13)|(one<<14)|(one<<15)|(one<<16)|(one<<17)|(one<<18)))){need_predictor_bit=0;} break;}
+                case 4: {if(0==((~col_was_predicted) & ((one<<4)|(one<<13)|(one<<14)))){need_predictor_bit=0;} break;}
+                case 5: {if(0==((~col_was_predicted) & ((one<<4)|(one<<11)))){need_predictor_bit=0;} break;}
+                case 6: {if(0==((~col_was_predicted) & ((one<<18)))){need_predictor_bit=0;} break;}
+                case 7: {if(0==((~col_was_predicted) & ((one<<16)|(one<<17)))){need_predictor_bit=0;} break;}
+                case 8: {if(0==((~col_was_predicted) & ((one<<10)|(one<<11)|(one<<12)))){need_predictor_bit=0;} break;}
+                case 9: {if(0==((~col_was_predicted) & ((one<<11)))){need_predictor_bit=0;} break;}
+                case 10: {if(0==((~col_was_predicted) & ((one<<4)|(one<<13)))){need_predictor_bit=0;} break;}
+                case 11: {if(0==((~col_was_predicted) & ((one<<4)))){need_predictor_bit=0;} break;}
+                case 12: {if(0==((~col_was_predicted) & ((one<<0)))){need_predictor_bit=0;} break;}
             }
             if(need_predictor_bit){
+                fprintf(stderr,"P%d",i);
                 if(read_bit(BINARY)){
                     predictor_column_used|=one<<i;
                     switch(i){
@@ -776,6 +803,7 @@ int main(int argc, char ** argv){
             unsigned char copy_bit = read_bit(BINARY);
             if(copy_bit){
                 copy_bits|=(one<<c);
+                warn("COPY  ");
             }
 
             //$encoding_list .= "COPY  " if $copy_bit;
@@ -787,8 +815,13 @@ int main(int argc, char ** argv){
                     encoding_choice_bits|=(one<<c);
                     if(read_bit(BINARY)){
                         do_store_bits|=(one<<c);
+                        warn("LIT-1 ");
+                    }else{
+                        warn("LIT-0 ");
                     }
 
+                }else{
+                    warn("REF   ");
                 }
 
                 /*
@@ -1023,6 +1056,7 @@ int main(int argc, char ** argv){
                     //Lit
 
                     if((c == driving_column) && (r!=0)){
+                        //warn("driving\n");
                         //only encode the difference
                         driving_col_as_number diff = read_rice(BINARY2, driving_col_rice_bits);
                         driving_col_as_number new_val = previous_driving_col_number + diff;
@@ -1037,6 +1071,7 @@ int main(int argc, char ** argv){
                         //Add it to the pool
                         bstring val_str = blk2bstr(buffer,driving_column_bytes);
                         driving_col_string_pool[col_to_string_pool_length[c]] = val_str;
+                        val=col_to_string_pool_length[c];
                         col_to_string_pool_length[c]++;
                     }else{
                         //Not delta encoded, just a plain old Lit
@@ -1402,6 +1437,7 @@ int main(int argc, char ** argv){
                             case 18: {string_pool_18[new_last_idx] = val_str;break;}
                         }
                         col_to_string_pool_length[c]++;
+                        val=new_last_idx;
 
                         if((c == driving_column) && (r==0)){
                             //only on the first row will this happen
@@ -1448,10 +1484,223 @@ int main(int argc, char ** argv){
         seek_till_byte_boundary(BINARY2);
         seek_till_byte_boundary(BINARY);
 
-        //fill in predicted vals
+
+        if(predictor_column_used & (one<<0)){
+            struct value_0 value={vals[7]};
+            struct friends_0 friends;
+            khiter_t k = kh_get(value_to_friends_0, value_to_most_popular_friends_0, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_0));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_0, k);
+            }else if(r !=0){
+                friends = most_popular_friends_0;
+            }else{die("You're just unpredictable.\n");}
+            vals[1] = friends.col_1;
+            vals[2] = friends.col_2;
+            vals[3] = friends.col_3;
+            vals[8] = friends.col_8;
+            vals[10] = friends.col_10;
+            vals[11] = friends.col_11;
+            vals[12] = friends.col_12;
+            vals[15] = friends.col_15;
+            vals[16] = friends.col_16;
+            vals[17] = friends.col_17;
+            vals[18] = friends.col_18;
+        }
+            
+        if(predictor_column_used & (one<<1)){
+            struct value_1 value={vals[7]};
+            struct friends_1 friends;
+            khiter_t k = kh_get(value_to_friends_1, value_to_most_popular_friends_1, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_1));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_1, k);
+            }else if(r !=0){
+                friends = most_popular_friends_1;
+            }else{die("You're just unpredictable.\n");}
+            vals[10] = friends.col_10;
+            vals[11] = friends.col_11;
+            vals[12] = friends.col_12;
+            vals[15] = friends.col_15;
+            vals[16] = friends.col_16;
+            vals[17] = friends.col_17;
+            vals[18] = friends.col_18;
+        }
+            
+        if(predictor_column_used & (one<<2)){
+            struct value_2 value={vals[7]};
+            struct friends_2 friends;
+            khiter_t k = kh_get(value_to_friends_2, value_to_most_popular_friends_2, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_2));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_2, k);
+            }else if(r !=0){
+                friends = most_popular_friends_2;
+            }else{die("You're just unpredictable.\n");}
+            vals[8] = friends.col_8;
+            vals[10] = friends.col_10;
+            vals[11] = friends.col_11;
+            vals[12] = friends.col_12;
+        }
+            
+        if(predictor_column_used & (one<<3)){
+            struct value_3 value={vals[3]};
+            struct friends_3 friends;
+            khiter_t k = kh_get(value_to_friends_3, value_to_most_popular_friends_3, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_3));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_3, k);
+            }else if(r !=0){
+                friends = most_popular_friends_3;
+            }else{die("You're just unpredictable.\n");}
+            vals[1] = friends.col_1;
+            vals[2] = friends.col_2;
+            vals[4] = friends.col_4;
+            vals[8] = friends.col_8;
+            vals[10] = friends.col_10;
+            vals[11] = friends.col_11;
+            vals[12] = friends.col_12;
+            vals[13] = friends.col_13;
+            vals[14] = friends.col_14;
+            vals[15] = friends.col_15;
+            vals[16] = friends.col_16;
+            vals[17] = friends.col_17;
+            vals[18] = friends.col_18;
+        }
+            
+        if(predictor_column_used & (one<<4)){
+            struct value_4 value={vals[3]};
+            struct friends_4 friends;
+            khiter_t k = kh_get(value_to_friends_4, value_to_most_popular_friends_4, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_4));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_4, k);
+            }else if(r !=0){
+                friends = most_popular_friends_4;
+            }else{die("You're just unpredictable.\n");}
+            vals[4] = friends.col_4;
+            vals[13] = friends.col_13;
+            vals[14] = friends.col_14;
+        }
+            
+        if(predictor_column_used & (one<<5)){
+            struct value_5 value={vals[1]};
+            struct friends_5 friends;
+            khiter_t k = kh_get(value_to_friends_5, value_to_most_popular_friends_5, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_5));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_5, k);
+            }else if(r !=0){
+                friends = most_popular_friends_5;
+            }else{die("You're just unpredictable.\n");}
+            vals[4] = friends.col_4;
+            vals[11] = friends.col_11;
+        }
+            
+        if(predictor_column_used & (one<<6)){
+            struct value_6 value={vals[1]};
+            struct friends_6 friends;
+            khiter_t k = kh_get(value_to_friends_6, value_to_most_popular_friends_6, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_6));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_6, k);
+            }else if(r !=0){
+                friends = most_popular_friends_6;
+            }else{die("You're just unpredictable.\n");}
+            vals[18] = friends.col_18;
+        }
+            
+        if(predictor_column_used & (one<<7)){
+            struct value_7 value={vals[15]};
+            struct friends_7 friends;
+            khiter_t k = kh_get(value_to_friends_7, value_to_most_popular_friends_7, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_7));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_7, k);
+            }else if(r !=0){
+                friends = most_popular_friends_7;
+            }else{die("You're just unpredictable.\n");}
+            vals[16] = friends.col_16;
+            vals[17] = friends.col_17;
+        }
+            
+        if(predictor_column_used & (one<<8)){
+            struct value_8 value={vals[8]};
+            struct friends_8 friends;
+            khiter_t k = kh_get(value_to_friends_8, value_to_most_popular_friends_8, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_8));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_8, k);
+            }else if(r !=0){
+                friends = most_popular_friends_8;
+            }else{die("You're just unpredictable.\n");}
+            vals[10] = friends.col_10;
+            vals[11] = friends.col_11;
+            vals[12] = friends.col_12;
+        }
+            
+        if(predictor_column_used & (one<<9)){
+            struct value_9 value={vals[10]};
+            struct friends_9 friends;
+            khiter_t k = kh_get(value_to_friends_9, value_to_most_popular_friends_9, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_9));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_9, k);
+            }else if(r !=0){
+                friends = most_popular_friends_9;
+            }else{die("You're just unpredictable.\n");}
+            vals[11] = friends.col_11;
+        }
+            
+        if(predictor_column_used & (one<<10)){
+            struct value_10 value={vals[14]};
+            struct friends_10 friends;
+            khiter_t k = kh_get(value_to_friends_10, value_to_most_popular_friends_10, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_10));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_10, k);
+            }else if(r !=0){
+                friends = most_popular_friends_10;
+            }else{die("You're just unpredictable.\n");}
+            vals[4] = friends.col_4;
+            vals[13] = friends.col_13;
+        }
+            
+        if(predictor_column_used & (one<<11)){
+            struct value_11 value={vals[13]};
+            struct friends_11 friends;
+            khiter_t k = kh_get(value_to_friends_11, value_to_most_popular_friends_11, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_11));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_11, k);
+            }else if(r !=0){
+                friends = most_popular_friends_11;
+            }else{die("You're just unpredictable.\n");}
+            vals[4] = friends.col_4;
+        }
+            
+        if(predictor_column_used & (one<<12)){
+            struct value_12 value={vals[1],vals[6],vals[4]};
+            struct friends_12 friends;
+            khiter_t k = kh_get(value_to_friends_12, value_to_most_popular_friends_12, value);
+            int is_missing = (k == kh_end(value_to_most_popular_friends_12));
+            if(!is_missing){
+                friends = kh_val(value_to_most_popular_friends_12, k);
+            }else if(r !=0){
+                friends = most_popular_friends_12;
+            }else{die("You're just unpredictable.\n");}
+            vals[0] = friends.col_0;
+        }
+            
         //store previous row vals
+        for (int c=0;c<19;c++){
+            previous_row[c]=vals[c];
+        }
+
         //check for undef vals
-        //store new predictor vals
+
+
+        //store new predictor vals-done
 
 
         {
@@ -1459,91 +1708,343 @@ int main(int argc, char ** argv){
             struct value_0 value={vals[7]};
             struct val_plus_friends_0 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_0, val_to_friends_to_count_0, val_plus_friends);
+            struct friends_0 *most_popular_friends = kh_get_val_ptr(value_to_friends_0, value_to_most_popular_friends_0, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_0, value_to_most_popular_friends_0, value,&ret);
+                kh_val(value_to_most_popular_friends_0,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_0,kh_get(val_plus_friends_to_count_0, val_to_friends_to_count_0, ((struct val_plus_friends_0){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_0, value_to_most_popular_friends_0, value);
+                kh_val(value_to_most_popular_friends_0,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_0, friends_to_count_0, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_0,kh_get(friends_to_count_0, friends_to_count_0, most_popular_friends_0)))){
+                most_popular_friends_0 = friends;
+            }
+            
         }
         {
             struct friends_1 friends={vals[10],vals[11],vals[12],vals[15],vals[16],vals[17],vals[18]};
             struct value_1 value={vals[7]};
             struct val_plus_friends_1 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_1, val_to_friends_to_count_1, val_plus_friends);
+            struct friends_1 *most_popular_friends = kh_get_val_ptr(value_to_friends_1, value_to_most_popular_friends_1, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_1, value_to_most_popular_friends_1, value,&ret);
+                kh_val(value_to_most_popular_friends_1,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_1,kh_get(val_plus_friends_to_count_1, val_to_friends_to_count_1, ((struct val_plus_friends_1){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_1, value_to_most_popular_friends_1, value);
+                kh_val(value_to_most_popular_friends_1,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_1, friends_to_count_1, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_1,kh_get(friends_to_count_1, friends_to_count_1, most_popular_friends_1)))){
+                most_popular_friends_1 = friends;
+            }
+            
         }
         {
             struct friends_2 friends={vals[8],vals[10],vals[11],vals[12]};
             struct value_2 value={vals[7]};
             struct val_plus_friends_2 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_2, val_to_friends_to_count_2, val_plus_friends);
+            struct friends_2 *most_popular_friends = kh_get_val_ptr(value_to_friends_2, value_to_most_popular_friends_2, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_2, value_to_most_popular_friends_2, value,&ret);
+                kh_val(value_to_most_popular_friends_2,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_2,kh_get(val_plus_friends_to_count_2, val_to_friends_to_count_2, ((struct val_plus_friends_2){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_2, value_to_most_popular_friends_2, value);
+                kh_val(value_to_most_popular_friends_2,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_2, friends_to_count_2, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_2,kh_get(friends_to_count_2, friends_to_count_2, most_popular_friends_2)))){
+                most_popular_friends_2 = friends;
+            }
+            
         }
         {
             struct friends_3 friends={vals[1],vals[2],vals[4],vals[8],vals[10],vals[11],vals[12],vals[13],vals[14],vals[15],vals[16],vals[17],vals[18]};
             struct value_3 value={vals[3]};
             struct val_plus_friends_3 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_3, val_to_friends_to_count_3, val_plus_friends);
+            struct friends_3 *most_popular_friends = kh_get_val_ptr(value_to_friends_3, value_to_most_popular_friends_3, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_3, value_to_most_popular_friends_3, value,&ret);
+                kh_val(value_to_most_popular_friends_3,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_3,kh_get(val_plus_friends_to_count_3, val_to_friends_to_count_3, ((struct val_plus_friends_3){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_3, value_to_most_popular_friends_3, value);
+                kh_val(value_to_most_popular_friends_3,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_3, friends_to_count_3, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_3,kh_get(friends_to_count_3, friends_to_count_3, most_popular_friends_3)))){
+                most_popular_friends_3 = friends;
+            }
+            
         }
         {
             struct friends_4 friends={vals[4],vals[13],vals[14]};
             struct value_4 value={vals[3]};
             struct val_plus_friends_4 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_4, val_to_friends_to_count_4, val_plus_friends);
+            struct friends_4 *most_popular_friends = kh_get_val_ptr(value_to_friends_4, value_to_most_popular_friends_4, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_4, value_to_most_popular_friends_4, value,&ret);
+                kh_val(value_to_most_popular_friends_4,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_4,kh_get(val_plus_friends_to_count_4, val_to_friends_to_count_4, ((struct val_plus_friends_4){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_4, value_to_most_popular_friends_4, value);
+                kh_val(value_to_most_popular_friends_4,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_4, friends_to_count_4, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_4,kh_get(friends_to_count_4, friends_to_count_4, most_popular_friends_4)))){
+                most_popular_friends_4 = friends;
+            }
+            
         }
         {
             struct friends_5 friends={vals[4],vals[11]};
             struct value_5 value={vals[1]};
             struct val_plus_friends_5 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_5, val_to_friends_to_count_5, val_plus_friends);
+            struct friends_5 *most_popular_friends = kh_get_val_ptr(value_to_friends_5, value_to_most_popular_friends_5, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_5, value_to_most_popular_friends_5, value,&ret);
+                kh_val(value_to_most_popular_friends_5,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_5,kh_get(val_plus_friends_to_count_5, val_to_friends_to_count_5, ((struct val_plus_friends_5){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_5, value_to_most_popular_friends_5, value);
+                kh_val(value_to_most_popular_friends_5,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_5, friends_to_count_5, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_5,kh_get(friends_to_count_5, friends_to_count_5, most_popular_friends_5)))){
+                most_popular_friends_5 = friends;
+            }
+            
         }
         {
             struct friends_6 friends={vals[18]};
             struct value_6 value={vals[1]};
             struct val_plus_friends_6 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_6, val_to_friends_to_count_6, val_plus_friends);
+            struct friends_6 *most_popular_friends = kh_get_val_ptr(value_to_friends_6, value_to_most_popular_friends_6, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_6, value_to_most_popular_friends_6, value,&ret);
+                kh_val(value_to_most_popular_friends_6,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_6,kh_get(val_plus_friends_to_count_6, val_to_friends_to_count_6, ((struct val_plus_friends_6){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_6, value_to_most_popular_friends_6, value);
+                kh_val(value_to_most_popular_friends_6,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_6, friends_to_count_6, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_6,kh_get(friends_to_count_6, friends_to_count_6, most_popular_friends_6)))){
+                most_popular_friends_6 = friends;
+            }
+            
         }
         {
             struct friends_7 friends={vals[16],vals[17]};
             struct value_7 value={vals[15]};
             struct val_plus_friends_7 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_7, val_to_friends_to_count_7, val_plus_friends);
+            struct friends_7 *most_popular_friends = kh_get_val_ptr(value_to_friends_7, value_to_most_popular_friends_7, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_7, value_to_most_popular_friends_7, value,&ret);
+                kh_val(value_to_most_popular_friends_7,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_7,kh_get(val_plus_friends_to_count_7, val_to_friends_to_count_7, ((struct val_plus_friends_7){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_7, value_to_most_popular_friends_7, value);
+                kh_val(value_to_most_popular_friends_7,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_7, friends_to_count_7, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_7,kh_get(friends_to_count_7, friends_to_count_7, most_popular_friends_7)))){
+                most_popular_friends_7 = friends;
+            }
+            
         }
         {
             struct friends_8 friends={vals[10],vals[11],vals[12]};
             struct value_8 value={vals[8]};
             struct val_plus_friends_8 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_8, val_to_friends_to_count_8, val_plus_friends);
+            struct friends_8 *most_popular_friends = kh_get_val_ptr(value_to_friends_8, value_to_most_popular_friends_8, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_8, value_to_most_popular_friends_8, value,&ret);
+                kh_val(value_to_most_popular_friends_8,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_8,kh_get(val_plus_friends_to_count_8, val_to_friends_to_count_8, ((struct val_plus_friends_8){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_8, value_to_most_popular_friends_8, value);
+                kh_val(value_to_most_popular_friends_8,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_8, friends_to_count_8, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_8,kh_get(friends_to_count_8, friends_to_count_8, most_popular_friends_8)))){
+                most_popular_friends_8 = friends;
+            }
+            
         }
         {
             struct friends_9 friends={vals[11]};
             struct value_9 value={vals[10]};
             struct val_plus_friends_9 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_9, val_to_friends_to_count_9, val_plus_friends);
+            struct friends_9 *most_popular_friends = kh_get_val_ptr(value_to_friends_9, value_to_most_popular_friends_9, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_9, value_to_most_popular_friends_9, value,&ret);
+                kh_val(value_to_most_popular_friends_9,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_9,kh_get(val_plus_friends_to_count_9, val_to_friends_to_count_9, ((struct val_plus_friends_9){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_9, value_to_most_popular_friends_9, value);
+                kh_val(value_to_most_popular_friends_9,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_9, friends_to_count_9, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_9,kh_get(friends_to_count_9, friends_to_count_9, most_popular_friends_9)))){
+                most_popular_friends_9 = friends;
+            }
+            
         }
         {
             struct friends_10 friends={vals[4],vals[13]};
             struct value_10 value={vals[14]};
             struct val_plus_friends_10 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_10, val_to_friends_to_count_10, val_plus_friends);
+            struct friends_10 *most_popular_friends = kh_get_val_ptr(value_to_friends_10, value_to_most_popular_friends_10, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_10, value_to_most_popular_friends_10, value,&ret);
+                kh_val(value_to_most_popular_friends_10,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_10,kh_get(val_plus_friends_to_count_10, val_to_friends_to_count_10, ((struct val_plus_friends_10){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_10, value_to_most_popular_friends_10, value);
+                kh_val(value_to_most_popular_friends_10,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_10, friends_to_count_10, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_10,kh_get(friends_to_count_10, friends_to_count_10, most_popular_friends_10)))){
+                most_popular_friends_10 = friends;
+            }
+            
         }
         {
             struct friends_11 friends={vals[4]};
             struct value_11 value={vals[13]};
             struct val_plus_friends_11 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_11, val_to_friends_to_count_11, val_plus_friends);
+            struct friends_11 *most_popular_friends = kh_get_val_ptr(value_to_friends_11, value_to_most_popular_friends_11, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_11, value_to_most_popular_friends_11, value,&ret);
+                kh_val(value_to_most_popular_friends_11,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_11,kh_get(val_plus_friends_to_count_11, val_to_friends_to_count_11, ((struct val_plus_friends_11){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_11, value_to_most_popular_friends_11, value);
+                kh_val(value_to_most_popular_friends_11,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_11, friends_to_count_11, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_11,kh_get(friends_to_count_11, friends_to_count_11, most_popular_friends_11)))){
+                most_popular_friends_11 = friends;
+            }
+            
         }
         {
             struct friends_12 friends={vals[0]};
             struct value_12 value={vals[1],vals[6],vals[4]};
             struct val_plus_friends_12 val_plus_friends = {value,friends};
             int new_count = kh_increment(val_plus_friends_to_count_12, val_to_friends_to_count_12, val_plus_friends);
+            struct friends_12 *most_popular_friends = kh_get_val_ptr(value_to_friends_12, value_to_most_popular_friends_12, value);
+            if(most_popular_friends==NULL){
+                int ret;
+                khiter_t k=kh_put(value_to_friends_12, value_to_most_popular_friends_12, value,&ret);
+                kh_val(value_to_most_popular_friends_12,k)=friends;
+            }
+            else if(new_count >= kh_val(val_to_friends_to_count_12,kh_get(val_plus_friends_to_count_12, val_to_friends_to_count_12, ((struct val_plus_friends_12){value, *most_popular_friends})))){
+                khiter_t k=kh_get(value_to_friends_12, value_to_most_popular_friends_12, value);
+                kh_val(value_to_most_popular_friends_12,k)=friends;
+            }
+            new_count = kh_increment(friends_to_count_12, friends_to_count_12, friends);
+            if((r == 0) || (new_count >= kh_val(friends_to_count_12,kh_get(friends_to_count_12, friends_to_count_12, most_popular_friends_12)))){
+                most_popular_friends_12 = friends;
+            }
+            
         }
+
+        puts("decoded row\n");
         //decode columns
         //print output
         //add row checksum
         //- end row loop
         //check final row count
         //check row checksum
+        printf("%d dupes\n",dupes);
         while(dupes>0){
             r++;
             dupes--;
+            printf("%d\n",r);
+                bstring val_0 = string_pool_0[vals[0]];
+                printf("%s\t",val_0->data);
+                bstring val_1 = string_pool_1[vals[1]];
+                printf("%s\t",val_1->data);
+                bstring val_2 = string_pool_2[vals[2]];
+                printf("%s\t",val_2->data);
+                bstring val_3 = string_pool_3[vals[3]];
+                char decoded_buf_3[ip_get_unbinarized_bufsize()];
+                struct tagbstring tb_decoded_3={ip_get_unbinarized_bufsize(),0,decoded_buf_3};
+                bstring decoded_val_3 = &tb_decoded_3;
+                ip_unbinarize(val_3, decoded_val_3);
+                val_3 = decoded_val_3;
+                printf("%s\t",val_3->data);
+                bstring val_4 = string_pool_4[vals[4]];
+                printf("%s\t",val_4->data);
+                bstring val_5 = string_pool_5[vals[5]];
+                char decoded_buf_5[datetime_get_bufsize()];
+                struct tagbstring tb_decoded_5={datetime_get_bufsize(),0,decoded_buf_5};
+                bstring decoded_val_5 = &tb_decoded_5;
+                datetime_from_integer(val_5, decoded_val_5);
+                val_5 = decoded_val_5;
+                printf("%s\t",val_5->data);
+                bstring val_6 = string_pool_6[vals[6]];
+                printf("%s\t",val_6->data);
+                bstring val_7 = string_pool_7[vals[7]];
+                char decoded_buf_7[short_uuid_get_bufsize()];
+                struct tagbstring tb_decoded_7={short_uuid_get_bufsize(),0,decoded_buf_7};
+                bstring decoded_val_7 = &tb_decoded_7;
+                short_uuid_unbinarize(val_7, decoded_val_7);
+                val_7 = decoded_val_7;
+                printf("%s\t",val_7->data);
+                bstring val_8 = string_pool_8[vals[8]];
+                printf("%s\t",val_8->data);
+                bstring val_9 = string_pool_9[vals[9]];
+                printf("%s\t",val_9->data);
+                bstring val_10 = string_pool_10[vals[10]];
+                printf("%s\t",val_10->data);
+                bstring val_11 = string_pool_11[vals[11]];
+                printf("%s\t",val_11->data);
+                bstring val_12 = string_pool_12[vals[12]];
+                printf("%s\t",val_12->data);
+                bstring val_13 = string_pool_13[vals[13]];
+                printf("%s\t",val_13->data);
+                bstring val_14 = string_pool_14[vals[14]];
+                printf("%s\t",val_14->data);
+                bstring val_15 = string_pool_15[vals[15]];
+                printf("%s\t",val_15->data);
+                bstring val_16 = string_pool_16[vals[16]];
+                printf("%s\t",val_16->data);
+                bstring val_17 = string_pool_17[vals[17]];
+                printf("%s\t",val_17->data);
+                bstring val_18 = string_pool_18[vals[18]];
+                printf("%s\t",val_18->data);
         }
     }
-
+    warn("done decoding\n");
     return 0;
 }
 
