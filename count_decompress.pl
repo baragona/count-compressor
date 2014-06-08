@@ -714,7 +714,7 @@ ENDC
     }
 
     for(my $i=0;$i<=$#predictor_cols;$i++){
-        $csrc.= "    printf(\"%d\t%d\\n\",(int)sizeof(struct friends_$i),(int)sizeof(struct value_$i));\n";
+        #$csrc.= "    printf(\"%d\t%d\\n\",(int)sizeof(struct friends_$i),(int)sizeof(struct value_$i));\n";
     }
     for(my $i=0;$i<=$#predictor_cols;$i++){
         $csrc.= "    khash_t(value_to_friends_$i) *value_to_most_popular_friends_$i = kh_init(value_to_friends_$i);\n";
@@ -729,7 +729,7 @@ ENDC
         $csrc.= "    struct friends_$i most_popular_friends_$i={0};\n";
     }
     $csrc .= "    typedef ".count::ctype_for_bitarray(8*$col_to_max_length[$driving_column])." driving_col_as_number;";
-
+    $csrc.= "    string_id previous_row[$n_cols]={0};\n";
     $csrc.=<<'ENDC';
     int r=0;
 
@@ -757,8 +757,9 @@ ENDC
     $csrc.= "            }\n";
 
     $csrc.= "            if(need_predictor_bit){\n";
-    $csrc.= "                fprintf(stderr,\"P%d\",i);\n";
+
     $csrc.= "                if(read_bit(BINARY)){\n";
+    $csrc.= "                fprintf(stderr,\"P%d \",i);\n";
     $csrc.= "                    predictor_column_used|=one<<i;\n";
 
     $csrc.= "                    switch(i){\n";
@@ -771,7 +772,7 @@ ENDC
     $csrc.= "            \n";
     $csrc.= "        }\n";
     $csrc.= "        string_id vals[$n_cols]           ={0};\n";
-    $csrc.= "        string_id previous_row[$n_cols]   ={0};\n";
+
     $csrc.= "        ".count::ctype_for_bitarray($n_cols)." copy_bits=0;\n";
     $csrc.= "        ".count::ctype_for_bitarray($n_cols)." encoding_choice_bits=0;\n";
     $csrc.= "        ".count::ctype_for_bitarray($n_cols)." do_store_bits=0;\n";
@@ -784,7 +785,7 @@ ENDC
             if(col_was_predicted & (one<<c)){
                 continue;
             }
-
+            fprintf(stderr,"(%d)",c);
             unsigned char copy_bit = read_bit(BINARY);
             if(copy_bit){
                 copy_bits|=(one<<c);
@@ -818,6 +819,7 @@ ENDC
                 */
             }
         }
+        warn("\n");
 
         //warn "ROW $r: $encoding_list\n";
 
@@ -1137,7 +1139,7 @@ ENDC
 
     $csrc.=<<'ENDC';
 
-        puts("decoded row\n");
+        //puts("decoded row\n");
         //decode columns
         //print output
         //add row checksum
@@ -1146,11 +1148,11 @@ ENDC
         //check row checksum
 ENDC
     $csrc.=<<'ENDC';
-        printf("%d dupes\n",dupes);
+        //printf("%d dupes\n",dupes);
         while(dupes>0){
             r++;
             dupes--;
-            printf("%d\n",r);
+            //printf("%d\n",r);
 ENDC
     for(my $i=0;$i<$n_cols;$i++){
         #$csrc.= "                warn(\"col $i\\n\");printf(\"%s\\n\",string_pool_$i"."[vals[$i]]->data);\n";
@@ -1178,11 +1180,13 @@ ENDC
         }
 
 
-        $csrc.= "                printf(\"%s\\t\",val_$i"."->data);\n";
+        $csrc.= "                fprintf(stdout, \"%s\",val_$i"."->data);\n";
+        $csrc.= "                fputs(\"\\t\",stdout);\n" unless $i==$n_cols-1;
         #$csrc.= "                printf(\"col $i: %d\\n\","."(int) vals[$i]);\n";
 
     }
     $csrc.=<<'ENDC';
+        fputs("\n",stdout);
         }
     }
     warn("done decoding\n");

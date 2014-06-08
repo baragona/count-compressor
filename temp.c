@@ -669,19 +669,6 @@ int main(int argc, char ** argv){
     string_id_16 stored_vals_16	[17];
     string_id_17 stored_vals_17	[308];
     string_id_18 stored_vals_18	[3];
-    printf("%d	%d\n",(int)sizeof(struct friends_0),(int)sizeof(struct value_0));
-    printf("%d	%d\n",(int)sizeof(struct friends_1),(int)sizeof(struct value_1));
-    printf("%d	%d\n",(int)sizeof(struct friends_2),(int)sizeof(struct value_2));
-    printf("%d	%d\n",(int)sizeof(struct friends_3),(int)sizeof(struct value_3));
-    printf("%d	%d\n",(int)sizeof(struct friends_4),(int)sizeof(struct value_4));
-    printf("%d	%d\n",(int)sizeof(struct friends_5),(int)sizeof(struct value_5));
-    printf("%d	%d\n",(int)sizeof(struct friends_6),(int)sizeof(struct value_6));
-    printf("%d	%d\n",(int)sizeof(struct friends_7),(int)sizeof(struct value_7));
-    printf("%d	%d\n",(int)sizeof(struct friends_8),(int)sizeof(struct value_8));
-    printf("%d	%d\n",(int)sizeof(struct friends_9),(int)sizeof(struct value_9));
-    printf("%d	%d\n",(int)sizeof(struct friends_10),(int)sizeof(struct value_10));
-    printf("%d	%d\n",(int)sizeof(struct friends_11),(int)sizeof(struct value_11));
-    printf("%d	%d\n",(int)sizeof(struct friends_12),(int)sizeof(struct value_12));
     khash_t(value_to_friends_0) *value_to_most_popular_friends_0 = kh_init(value_to_friends_0);
     khash_t(value_to_friends_1) *value_to_most_popular_friends_1 = kh_init(value_to_friends_1);
     khash_t(value_to_friends_2) *value_to_most_popular_friends_2 = kh_init(value_to_friends_2);
@@ -734,7 +721,8 @@ int main(int argc, char ** argv){
     struct friends_10 most_popular_friends_10={0};
     struct friends_11 most_popular_friends_11={0};
     struct friends_12 most_popular_friends_12={0};
-    typedef uint32_t driving_col_as_number;    int r=0;
+    typedef uint32_t driving_col_as_number;    string_id previous_row[19]={0};
+    int r=0;
 
     driving_col_as_number previous_driving_col_number=0;
 
@@ -765,8 +753,8 @@ int main(int argc, char ** argv){
                 case 12: {if(0==((~col_was_predicted) & ((one<<0)))){need_predictor_bit=0;} break;}
             }
             if(need_predictor_bit){
-                fprintf(stderr,"P%d",i);
                 if(read_bit(BINARY)){
+                fprintf(stderr,"P%d ",i);
                     predictor_column_used|=one<<i;
                     switch(i){
                         case 0: {col_was_predicted|=((one<<1)|(one<<2)|(one<<3)|(one<<8)|(one<<10)|(one<<11)|(one<<12)|(one<<15)|(one<<16)|(one<<17)|(one<<18));break;}
@@ -788,7 +776,6 @@ int main(int argc, char ** argv){
             
         }
         string_id vals[19]           ={0};
-        string_id previous_row[19]   ={0};
         uint32_t copy_bits=0;
         uint32_t encoding_choice_bits=0;
         uint32_t do_store_bits=0;
@@ -799,7 +786,7 @@ int main(int argc, char ** argv){
             if(col_was_predicted & (one<<c)){
                 continue;
             }
-
+            fprintf(stderr,"(%d)",c);
             unsigned char copy_bit = read_bit(BINARY);
             if(copy_bit){
                 copy_bits|=(one<<c);
@@ -833,6 +820,7 @@ int main(int argc, char ** argv){
                 */
             }
         }
+        warn("\n");
 
         //warn "ROW $r: $encoding_list\n";
 
@@ -1977,71 +1965,90 @@ int main(int argc, char ** argv){
             
         }
 
-        puts("decoded row\n");
+        //puts("decoded row\n");
         //decode columns
         //print output
         //add row checksum
         //- end row loop
         //check final row count
         //check row checksum
-        printf("%d dupes\n",dupes);
+        //printf("%d dupes\n",dupes);
         while(dupes>0){
             r++;
             dupes--;
-            printf("%d\n",r);
+            //printf("%d\n",r);
                 bstring val_0 = string_pool_0[vals[0]];
-                printf("%s\t",val_0->data);
+                fprintf(stdout, "%s",val_0->data);
+                fputs("\t",stdout);
                 bstring val_1 = string_pool_1[vals[1]];
-                printf("%s\t",val_1->data);
+                fprintf(stdout, "%s",val_1->data);
+                fputs("\t",stdout);
                 bstring val_2 = string_pool_2[vals[2]];
-                printf("%s\t",val_2->data);
+                fprintf(stdout, "%s",val_2->data);
+                fputs("\t",stdout);
                 bstring val_3 = string_pool_3[vals[3]];
                 char decoded_buf_3[ip_get_unbinarized_bufsize()];
                 struct tagbstring tb_decoded_3={ip_get_unbinarized_bufsize(),0,decoded_buf_3};
                 bstring decoded_val_3 = &tb_decoded_3;
                 ip_unbinarize(val_3, decoded_val_3);
                 val_3 = decoded_val_3;
-                printf("%s\t",val_3->data);
+                fprintf(stdout, "%s",val_3->data);
+                fputs("\t",stdout);
                 bstring val_4 = string_pool_4[vals[4]];
-                printf("%s\t",val_4->data);
+                fprintf(stdout, "%s",val_4->data);
+                fputs("\t",stdout);
                 bstring val_5 = string_pool_5[vals[5]];
                 char decoded_buf_5[datetime_get_bufsize()];
                 struct tagbstring tb_decoded_5={datetime_get_bufsize(),0,decoded_buf_5};
                 bstring decoded_val_5 = &tb_decoded_5;
                 datetime_from_integer(val_5, decoded_val_5);
                 val_5 = decoded_val_5;
-                printf("%s\t",val_5->data);
+                fprintf(stdout, "%s",val_5->data);
+                fputs("\t",stdout);
                 bstring val_6 = string_pool_6[vals[6]];
-                printf("%s\t",val_6->data);
+                fprintf(stdout, "%s",val_6->data);
+                fputs("\t",stdout);
                 bstring val_7 = string_pool_7[vals[7]];
                 char decoded_buf_7[short_uuid_get_bufsize()];
                 struct tagbstring tb_decoded_7={short_uuid_get_bufsize(),0,decoded_buf_7};
                 bstring decoded_val_7 = &tb_decoded_7;
                 short_uuid_unbinarize(val_7, decoded_val_7);
                 val_7 = decoded_val_7;
-                printf("%s\t",val_7->data);
+                fprintf(stdout, "%s",val_7->data);
+                fputs("\t",stdout);
                 bstring val_8 = string_pool_8[vals[8]];
-                printf("%s\t",val_8->data);
+                fprintf(stdout, "%s",val_8->data);
+                fputs("\t",stdout);
                 bstring val_9 = string_pool_9[vals[9]];
-                printf("%s\t",val_9->data);
+                fprintf(stdout, "%s",val_9->data);
+                fputs("\t",stdout);
                 bstring val_10 = string_pool_10[vals[10]];
-                printf("%s\t",val_10->data);
+                fprintf(stdout, "%s",val_10->data);
+                fputs("\t",stdout);
                 bstring val_11 = string_pool_11[vals[11]];
-                printf("%s\t",val_11->data);
+                fprintf(stdout, "%s",val_11->data);
+                fputs("\t",stdout);
                 bstring val_12 = string_pool_12[vals[12]];
-                printf("%s\t",val_12->data);
+                fprintf(stdout, "%s",val_12->data);
+                fputs("\t",stdout);
                 bstring val_13 = string_pool_13[vals[13]];
-                printf("%s\t",val_13->data);
+                fprintf(stdout, "%s",val_13->data);
+                fputs("\t",stdout);
                 bstring val_14 = string_pool_14[vals[14]];
-                printf("%s\t",val_14->data);
+                fprintf(stdout, "%s",val_14->data);
+                fputs("\t",stdout);
                 bstring val_15 = string_pool_15[vals[15]];
-                printf("%s\t",val_15->data);
+                fprintf(stdout, "%s",val_15->data);
+                fputs("\t",stdout);
                 bstring val_16 = string_pool_16[vals[16]];
-                printf("%s\t",val_16->data);
+                fprintf(stdout, "%s",val_16->data);
+                fputs("\t",stdout);
                 bstring val_17 = string_pool_17[vals[17]];
-                printf("%s\t",val_17->data);
+                fprintf(stdout, "%s",val_17->data);
+                fputs("\t",stdout);
                 bstring val_18 = string_pool_18[vals[18]];
-                printf("%s\t",val_18->data);
+                fprintf(stdout, "%s",val_18->data);
+        fputs("\n",stdout);
         }
     }
     warn("done decoding\n");
