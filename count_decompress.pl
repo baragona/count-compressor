@@ -10,6 +10,8 @@ use Cwd;
 use count;
 use List::Util qw(max sum);
 use Storable qw(store_fd nstore_fd freeze thaw);
+use Time::HiRes qw ( time );
+
 
 my $check_sum=1;
 my $operating_mode='c';
@@ -44,6 +46,10 @@ my %col_to_predicted_cols = %{$index->{col_to_predicted_cols}};
 my @predictor_cols = @{$index->{predictor_cols}};
 my $driving_column = $index->{driving_column};
 my $driving_col_rice_bits = $index->{driving_col_rice_bits};
+
+my $col_to_val_plus_friends_uniques = $index->{col_to_val_plus_friends_uniques};
+my $col_to_friends_uniques = $index->{col_to_friends_uniques};
+my $col_to_values_uniques = $index->{col_to_values_uniques};
 
 my @col_to_max_stored_vals = @{$index->{col_to_max_stored_vals}};
 my @col_to_uniques = @{$index->{col_to_uniques}};
@@ -458,7 +464,8 @@ else{
 
     my $max_passed_fd = max($binary_fileno, $binary2_fileno);
 
-    my $csrc = "#line ".(__LINE__+2)."\n";
+    #my $csrc = "#line ".(__LINE__+2)."\n";
+    my $csrc = '';
     $csrc.=<<'ENDC';
 
 #include <stdio.h>
@@ -471,10 +478,9 @@ else{
 //#include <unordered_map>
 
 #define INLINE __attribute__((always_inline)) static
+//#define INLINE static
 #define PURE __attribute__((pure))
 #define MAYBE __attribute__((unused))
-
-
 
 
 #include "khash.h"
@@ -487,26 +493,11 @@ KHASH_INIT(the_hash, uint32_t, uint64_t, 1, kh_int_hash_func, kh_int_hash_equal)
 #include "count.h"
 
 
-KHASH_INIT(bstring_to_bstring, bstring, bstring, 1, calc_bstring_hash, biseq)
-KHASH_INIT(bstring_to_int, bstring, int, 1, calc_bstring_hash, biseq)
+//KHASH_INIT(bstring_to_bstring, bstring, bstring, 1, calc_bstring_hash, biseq)
+//KHASH_INIT(bstring_to_int, bstring, int, 1, calc_bstring_hash, biseq)
 
 
-//returns new value
-#define kh_increment(type,ptr,value) ({\
-    khiter_t k = kh_get(type, ptr, value);\
-    int is_missing = (k == kh_end(ptr));\
-    if(is_missing){\
-        int ret;\
-        k = kh_put(type, ptr, value, &ret);\
-        kh_value(ptr,k)=0;\
-    }\
-    kh_value(ptr,k)++;kh_value(ptr,k);})
 
-//returns pointer to the value, or null
-#define kh_get_val_ptr(type,ptr,value) ({\
-    khiter_t k = kh_get(type, ptr, value);\
-    int is_missing = (k == kh_end(ptr));\
-    is_missing ? NULL : &(kh_value(ptr,k));})
 
 
 ENDC
@@ -543,7 +534,6 @@ ENDC
     $csrc .= "
 #pragma pack(pop)   /* restore original alignment from stack */
 
-//#define struct_hash(struct_type) jenkins_hash((char *)(&struct_hash_val), sizeof(struct struct_type))
 
 ";
     for(my $i=0;$i<=$#predictor_cols;$i++){
@@ -553,7 +543,7 @@ ENDC
     }
     for(my $i=0;$i<=$#predictor_cols;$i++){
         $csrc.= "PURE INLINE int struct_equal_value_$i (struct value_$i a, struct value_$i b){\n";
-        $csrc.= "    return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct value_$i));\n";
+        $csrc.= "    return 0==my_memcmp((void *) (&a),(void *) (&b),sizeof(struct value_$i));\n";
         $csrc.= "}\n";
     }
     for(my $i=0;$i<=$#predictor_cols;$i++){
@@ -563,7 +553,7 @@ ENDC
     }
     for(my $i=0;$i<=$#predictor_cols;$i++){
         $csrc.= "PURE INLINE int struct_equal_val_plus_friends_$i (struct val_plus_friends_$i a, struct val_plus_friends_$i b){\n";
-        $csrc.= "    return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_$i));\n";
+        $csrc.= "    return 0==my_memcmp((void *) (&a),(void *) (&b),sizeof(struct val_plus_friends_$i));\n";
         $csrc.= "}\n";
     }
     for(my $i=0;$i<=$#predictor_cols;$i++){
@@ -573,7 +563,7 @@ ENDC
     }
     for(my $i=0;$i<=$#predictor_cols;$i++){
         $csrc.= "PURE INLINE int struct_equal_friends_$i (struct friends_$i a, struct friends_$i b){\n";
-        $csrc.= "    return 0==memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_$i));\n";
+        $csrc.= "    return 0==my_memcmp((void *) (&a),(void *) (&b),sizeof(struct friends_$i));\n";
         $csrc.= "}\n";
     }
     for(my $i=0;$i<=$#predictor_cols;$i++){
@@ -641,7 +631,7 @@ INLINE uint32_t read_bits_as_number(int fd, int n_bits){
     return val;
 }
 
-INLINE int stream_finished(int fd){
+MAYBE INLINE int stream_finished(int fd){
     if(fd_to_ibuff_bit_pos[fd]==8){
         fd_to_ibuff_bit_pos[fd]=0;
         fd_to_ibuff_bit_mask[fd]=128;
@@ -688,7 +678,7 @@ ENDC
     const int BINARY = $binary_fileno;
     const int BINARY2 = $binary2_fileno;
 
-
+    const int print_encodings=0;
 
     const __uint128_t one = 1;
     //__uint128_t test=one<<5;
@@ -707,15 +697,18 @@ ENDC
     for(my $i=0;$i<$n_cols;$i++){
         $csrc.= "    bstring string_pool_$i"."\t[$col_to_uniques[$i]];\n";
     }
-    $csrc.= "    bstring * driving_col_string_pool = string_pool_$driving_column;\n";
+    $csrc.= "    bstring * const col_to_string_pool[] = {".(join ',', map {"string_pool_$_"} (0..($n_cols-1)))."};\n";
 
     for(my $i=0;$i<$n_cols;$i++){
-        $csrc.= "    string_id_$i stored_vals_$i\t[$col_to_max_stored_vals[$i]];\n";
+        $csrc.= "    string_id stored_vals_$i\t[$col_to_max_stored_vals[$i]];\n";
     }
-
+    $csrc.= "    string_id * const col_to_stored_vals[] = {".(join ',', map {"stored_vals_$_"} (0..($n_cols-1)))."};\n";
     for(my $i=0;$i<=$#predictor_cols;$i++){
         #$csrc.= "    printf(\"%d\t%d\\n\",(int)sizeof(struct friends_$i),(int)sizeof(struct value_$i));\n";
     }
+
+    $csrc.= "    const int col_to_max_length[] = {".(join ',',(map {count::log2_int($col_to_max_length[$_])} (0..($n_cols-1))))."};\n";
+
     for(my $i=0;$i<=$#predictor_cols;$i++){
         $csrc.= "    khash_t(value_to_friends_$i) *value_to_most_popular_friends_$i = kh_init(value_to_friends_$i);\n";
     }
@@ -725,17 +718,57 @@ ENDC
     for(my $i=0;$i<=$#predictor_cols;$i++){
         $csrc.= "    khash_t(friends_to_count_$i) *friends_to_count_$i = kh_init(friends_to_count_$i);\n";
     }
+
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "    kh_resize_empty(value_to_friends_$i,value_to_most_popular_friends_$i,kh_get_n_buckets_to_store_n_keys(".($col_to_values_uniques->{$predictor_cols[$i]})."));\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "    kh_resize_empty(val_plus_friends_to_count_$i,val_to_friends_to_count_$i,kh_get_n_buckets_to_store_n_keys(".($col_to_val_plus_friends_uniques->{$predictor_cols[$i]})."));\n";
+    }
+    for(my $i=0;$i<=$#predictor_cols;$i++){
+        $csrc.= "    kh_resize_empty(friends_to_count_$i,friends_to_count_$i,kh_get_n_buckets_to_store_n_keys(".($col_to_friends_uniques->{$predictor_cols[$i]})."));\n";
+    }
+
+
+
+
+
     for(my $i=0;$i<=$#predictor_cols;$i++){
         $csrc.= "    struct friends_$i most_popular_friends_$i={0};\n";
     }
+
+
+    my @alphabet_lookup_tbl;
+    my @col_to_bits_lookup_tbl;
+    for(my $i=0;$i<$n_cols;$i++){
+
+        if(defined $col_to_literal_bits[$i]){
+
+            for (my $char_idx=0;$char_idx <= $#{$col_to_alpha_idx_to_char[$i]} ; $char_idx++){
+                $alphabet_lookup_tbl[256*$i+$char_idx] = (ord $col_to_alpha_idx_to_char[$i]->[$char_idx]);
+            }
+
+            $col_to_bits_lookup_tbl[$i]=$col_to_literal_bits[$i];
+        }else{
+            $col_to_bits_lookup_tbl[$i]=8;
+        }
+    }
+
+
+    $csrc.= "    const unsigned char alphabet_lookup[] = {".(join ',', map {$_?$_:0} @alphabet_lookup_tbl)."};\n";
+    $csrc.= "    const unsigned char col_to_bits_lookup_tbl[] = {".(join ',', @col_to_bits_lookup_tbl)."};\n";
+
+
+
+
     $csrc .= "    typedef ".count::ctype_for_bitarray(8*$col_to_max_length[$driving_column])." driving_col_as_number;";
     $csrc.= "    string_id previous_row[$n_cols]={0};\n";
-    $csrc.=<<'ENDC';
+    $csrc.=<<ENDC;
     int r=0;
 
     driving_col_as_number previous_driving_col_number=0;
 
-    while(! stream_finished(BINARY)){
+    while(r < $correct_n_rows){
 
 ENDC
     #$csrc.= "        const int n_cols = $n_cols;\n";
@@ -745,28 +778,24 @@ ENDC
     #$csrc.= "        char col_was_predicted[$n_cols]={0};\n";
     #$csrc.= "        char predictor_column_used[$#predictor_cols+1]={0};\n";
     $csrc.= "        ".count::ctype_for_bitarray($n_cols)." col_was_predicted=0;\n";
+
+    $csrc.= "        static const ".count::ctype_for_bitarray($n_cols)." col_to_col_was_predicted_mask[]={ ".(join ',', (map {'('.(join "|", map {"(one<<$_)"} @{$col_to_predicted_cols{$predictor_cols[$_]}}).')'} (0..$#predictor_cols)))."};\n";
+
     $csrc.= "        ".count::ctype_for_bitarray($#predictor_cols+1)." predictor_column_used=0;\n";
     $csrc.= "        for(int i=0;i<n_predictors;i++){\n";
     $csrc.= "            \n";
     $csrc.= "            int need_predictor_bit=1;\n";
     $csrc.= "            \n";
-    $csrc.= "            switch(i){\n";
-    for(my $i=0;$i<=$#predictor_cols;$i++){
-        $csrc.= "                case $i: {if(0==((~col_was_predicted) & (".(join "|", map {"(one<<$_)"} @{$col_to_predicted_cols{$predictor_cols[$i]}})."))){need_predictor_bit=0;} break;}\n";
-    }
-    $csrc.= "            }\n";
+    $csrc.= "            if(0==((~col_was_predicted) & col_to_col_was_predicted_mask[i])){need_predictor_bit=0;}\n";
+
 
     $csrc.= "            if(need_predictor_bit){\n";
 
     $csrc.= "                if(read_bit(BINARY)){\n";
-    $csrc.= "                fprintf(stderr,\"P%d \",i);\n";
+    $csrc.= "                    if(print_encodings) fprintf(stderr,\"P%d \",i);\n";
     $csrc.= "                    predictor_column_used|=one<<i;\n";
 
-    $csrc.= "                    switch(i){\n";
-    for(my $i=0;$i<=$#predictor_cols;$i++){
-        $csrc.= "                        case $i: {col_was_predicted|=(".(join "|", map {"(one<<$_)"} @{$col_to_predicted_cols{$predictor_cols[$i]}}).");break;}\n";
-    }
-    $csrc.= "                    }\n";
+    $csrc.= "                    col_was_predicted|=col_to_col_was_predicted_mask[i];\n";
     $csrc.= "                }\n";
     $csrc.= "            }\n";
     $csrc.= "            \n";
@@ -785,11 +814,11 @@ ENDC
             if(col_was_predicted & (one<<c)){
                 continue;
             }
-            fprintf(stderr,"(%d)",c);
+            if(print_encodings) fprintf(stderr,"(%d)",c);
             unsigned char copy_bit = read_bit(BINARY);
             if(copy_bit){
                 copy_bits|=(one<<c);
-                warn("COPY  ");
+                if(print_encodings) warn("COPY  ");
             }
 
             //$encoding_list .= "COPY  " if $copy_bit;
@@ -801,25 +830,17 @@ ENDC
                     encoding_choice_bits|=(one<<c);
                     if(read_bit(BINARY)){
                         do_store_bits|=(one<<c);
-                        warn("LIT-1 ");
+                        if(print_encodings) warn("LIT-1 ");
                     }else{
-                        warn("LIT-0 ");
+                        if(print_encodings) warn("LIT-0 ");
                     }
 
                 }else{
-                    warn("REF   ");
+                    if(print_encodings) warn("REF   ");
                 }
-
-                /*
-                if(encoding_choice_bits[c]){
-                    $encoding_list .= "LIT-$do_store_bits[$c] ";
-                }else{
-                    $encoding_list .= "REF   ";
-                }
-                */
             }
         }
-        warn("\n");
+        if(print_encodings) warn("\n");
 
         //warn "ROW $r: $encoding_list\n";
 
@@ -838,13 +859,7 @@ ENDC
                 if(c == driving_column && r!=0){
                 //only encode the difference
                 }else{
-                    int max_length=0;
-                    switch(c){
-ENDC
-    $csrc.=join "", map {"                        case $_: max_length = ".count::log2_int($col_to_max_length[$_]).";break;\n"} (0..($n_cols-1));
-    $csrc.=<<'ENDC';
-                    }
-                    int length_length = max_length;
+                    int length_length = col_to_max_length[c];
                     literal_lengths[c] = read_bits_as_number(BINARY,length_length);
                 }
             }
@@ -885,24 +900,16 @@ ENDC
 
 
                     int stored_val_idx = read_rice(BINARY2, rice_bits);
-                    switch(c){
-ENDC
-    $csrc.= join "", map {"                        case $_: val = stored_vals_$_"."[stored_val_idx];break;\n"} (0..($n_cols-1));
-    $csrc.=<<'ENDC';
-                    }
+                    val = col_to_stored_vals[c][stored_val_idx];
                     int swap_with = (20*stored_val_idx) / 21;
 
                     if((swap_with >= 0) && (swap_with != stored_val_idx)){
-                        switch(c){
-ENDC
-    $csrc.= join "", map {"                            case $_:{
-                                string_id_$_ temp = stored_vals_$_"."[stored_val_idx];
-                                stored_vals_$_"."[stored_val_idx] = stored_vals_$_"."[swap_with];
-                                stored_vals_$_"."[swap_with] = temp;
-                                break;
-                            }\n"} (0..($n_cols-1));
-    $csrc.=<<'ENDC';
-                        }
+
+                        string_id temp = col_to_stored_vals[c][stored_val_idx];
+                        col_to_stored_vals[c][stored_val_idx] = col_to_stored_vals[c][swap_with];
+                        col_to_stored_vals[c][swap_with] = temp;
+
+
 
                     }
 
@@ -928,27 +935,13 @@ ENDC
                         }
                         //Add it to the pool
                         bstring val_str = blk2bstr(buffer,driving_column_bytes);
-                        driving_col_string_pool[col_to_string_pool_length[c]] = val_str;
+                        col_to_string_pool[c][col_to_string_pool_length[c]] = val_str;
                         val=col_to_string_pool_length[c];
                         col_to_string_pool_length[c]++;
                     }else{
                         //Not delta encoded, just a plain old Lit
                         int length = literal_lengths[c];
-                        uint8_t bits_per_char=8;
-                        switch(c){
-ENDC
-    for(my $i=0;$i<$n_cols;$i++){
-
-        if(defined $col_to_literal_bits[$i]){
-
-            my $bits_per_char=$col_to_literal_bits[$i];
-            $csrc.= "                            case $i: {bits_per_char=$bits_per_char;break;}\n";
-
-        }
-    }
-    $csrc.=<<'ENDC';
-                        }
-
+                        uint8_t bits_per_char=col_to_bits_lookup_tbl[c];
                         uint8_t buffer[length];
 
                         for (int i=0;i<length;i++){
@@ -957,26 +950,7 @@ ENDC
                             if(bits_per_char==8){
                                 this_char=idx;//Default in case there is no alphabet
                             }else{
-                                switch(c){
-ENDC
-    for(my $i=0;$i<$n_cols;$i++){
-
-        if(defined $col_to_literal_bits[$i]){
-            my $bits_per_char=$col_to_literal_bits[$i];
-            $csrc.= "                                   case $i: {\n";
-
-            $csrc.= "                                       switch(idx){\n";
-            for (my $char_idx=0;$char_idx <= $#{$col_to_alpha_idx_to_char[$i]} ; $char_idx++){
-                $csrc.= "                                           case $char_idx: {this_char = ".(ord $col_to_alpha_idx_to_char[$i]->[$char_idx]).";break;}\n";
-            }
-            $csrc.= "                                       }\n";
-            $csrc.= "                                       break;\n";
-            $csrc.= "                                   }\n";
-
-        }
-    }
-    $csrc.=<<'ENDC';
-                                }
+                                this_char=alphabet_lookup[c*256+idx];
                             }
                             buffer[i]=this_char;
                         }
@@ -984,13 +958,7 @@ ENDC
                         //Add it to the pool
                         bstring val_str = blk2bstr(buffer,length);
                         int new_last_idx = col_to_string_pool_length[c];
-                        switch(c){
-ENDC
-    for(my $i=0;$i<$n_cols;$i++){
-        $csrc.= "                            case $i: {string_pool_$i"."[new_last_idx] = val_str;break;}\n";
-    }
-    $csrc.=<<'ENDC';
-                        }
+                        col_to_string_pool[c][new_last_idx] = val_str;
                         col_to_string_pool_length[c]++;
                         val=new_last_idx;
 
@@ -1008,13 +976,9 @@ ENDC
                     if(do_store_bits & (one<<c)){
                         int last_inserted_idx=col_to_string_pool_length[c]-1;
                         int new_stored_idx = col_to_n_stored_vals[c];
-                        switch(c){
-ENDC
-    for(my $i=0;$i<$n_cols;$i++){
-        $csrc.= "                            case $i: {stored_vals_$i"."[new_stored_idx]=last_inserted_idx;break;}\n";
-    }
-    $csrc.=<<'ENDC';
-                        }
+
+                        col_to_stored_vals[c][new_stored_idx]=last_inserted_idx;
+
                         col_to_n_stored_vals[c]++;
                     }
 
@@ -1102,7 +1066,7 @@ ENDC
 #         $csrc.= "            int is_missing = (k == kh_end(val_to_friends_to_count_$i));\n";
 #         $csrc.= "            if(is_missing){\n";
 #         $csrc.= "                int ret;\n";
-#         $csrc.= "                k = kh_put(val_plus_friends_to_count_$i, val_to_friends_to_count_$i, val_plus_friends, &ret);\n";
+#         $csrc.= "                k = kh_put_without_resizing(val_plus_friends_to_count_$i, val_to_friends_to_count_$i, val_plus_friends, &ret);\n";
 #         $csrc.= "                kh_value(val_to_friends_to_count_$i,k)=0;\n";
 #         $csrc.= "            }\n";
 #         $csrc.= "            kh_value(val_to_friends_to_count_$i,k)++;\n";
@@ -1110,7 +1074,7 @@ ENDC
         $csrc.= "            struct friends_$i *most_popular_friends = kh_get_val_ptr(value_to_friends_$i, value_to_most_popular_friends_$i, value);\n";
         $csrc.= "            if(most_popular_friends==NULL){\n";
         $csrc.= "                int ret;\n";
-        $csrc.= "                khiter_t k=kh_put(value_to_friends_$i, value_to_most_popular_friends_$i, value,&ret);\n";
+        $csrc.= "                khiter_t k=kh_put_without_resizing(value_to_friends_$i, value_to_most_popular_friends_$i, value,&ret);\n";
         $csrc.= "                kh_val(value_to_most_popular_friends_$i,k)=friends;\n";
         $csrc.= "            }\n";
         $csrc.= "            else if(new_count >= kh_val(val_to_friends_to_count_$i,kh_get(val_plus_friends_to_count_$i, val_to_friends_to_count_$i, ((struct val_plus_friends_$i){value, *most_popular_friends})))){\n";
@@ -1147,42 +1111,42 @@ ENDC
         //check final row count
         //check row checksum
 ENDC
+    for(my $i=0;$i<$n_cols;$i++){
+        #$csrc.= "                warn(\"col $i\\n\");printf(\"%s\\n\",string_pool_$i"."[vals[$i]]->data);\n";
+        $csrc.= "        bstring val_$i = string_pool_$i"."[vals[$i]];\n";
+        if($column_encodings[$i] eq 'uuid'){
+            #$val = count::short_uuid_unbinarize $val;
+            $csrc.= "        unsigned char decoded_buf_$i"."[short_uuid_get_bufsize()];\n";
+            $csrc.= "        struct tagbstring tb_decoded_$i={short_uuid_get_bufsize(),0,decoded_buf_$i};\n";
+            $csrc.= "        bstring decoded_val_$i = &tb_decoded_$i;\n";
+            $csrc.= "        short_uuid_unbinarize(val_$i, decoded_val_$i);\n";
+            $csrc.= "        val_$i = decoded_val_$i;\n";
+        }elsif($column_encodings[$i] eq 'ip'){
+            #$val = count::ip_unbinarize $val;
+            $csrc.= "        unsigned char decoded_buf_$i"."[ip_get_unbinarized_bufsize()];\n";
+            $csrc.= "        struct tagbstring tb_decoded_$i={ip_get_unbinarized_bufsize(),0,decoded_buf_$i};\n";
+            $csrc.= "        bstring decoded_val_$i = &tb_decoded_$i;\n";
+            $csrc.= "        ip_unbinarize(val_$i, decoded_val_$i);\n";
+            $csrc.= "        val_$i = decoded_val_$i;\n";
+        }elsif($column_encodings[$i] eq 'datetime'){
+            $csrc.= "        unsigned char decoded_buf_$i"."[datetime_get_bufsize()];\n";
+            $csrc.= "        struct tagbstring tb_decoded_$i={datetime_get_bufsize(),0,decoded_buf_$i};\n";
+            $csrc.= "        bstring decoded_val_$i = &tb_decoded_$i;\n";
+            $csrc.= "        datetime_from_integer(val_$i, decoded_val_$i);\n";
+            $csrc.= "        val_$i = decoded_val_$i;\n";
+        }
+    }
     $csrc.=<<'ENDC';
         //printf("%d dupes\n",dupes);
         while(dupes>0){
             r++;
             dupes--;
-            //printf("%d\n",r);
 ENDC
+
     for(my $i=0;$i<$n_cols;$i++){
-        #$csrc.= "                warn(\"col $i\\n\");printf(\"%s\\n\",string_pool_$i"."[vals[$i]]->data);\n";
-        $csrc.= "                bstring val_$i = string_pool_$i"."[vals[$i]];\n";
-        if($column_encodings[$i] eq 'uuid'){
-            #$val = count::short_uuid_unbinarize $val;
-            $csrc.= "                char decoded_buf_$i"."[short_uuid_get_bufsize()];\n";
-            $csrc.= "                struct tagbstring tb_decoded_$i={short_uuid_get_bufsize(),0,decoded_buf_$i};\n";
-            $csrc.= "                bstring decoded_val_$i = &tb_decoded_$i;\n";
-            $csrc.= "                short_uuid_unbinarize(val_$i, decoded_val_$i);\n";
-            $csrc.= "                val_$i = decoded_val_$i;\n";
-        }elsif($column_encodings[$i] eq 'ip'){
-            #$val = count::ip_unbinarize $val;
-            $csrc.= "                char decoded_buf_$i"."[ip_get_unbinarized_bufsize()];\n";
-            $csrc.= "                struct tagbstring tb_decoded_$i={ip_get_unbinarized_bufsize(),0,decoded_buf_$i};\n";
-            $csrc.= "                bstring decoded_val_$i = &tb_decoded_$i;\n";
-            $csrc.= "                ip_unbinarize(val_$i, decoded_val_$i);\n";
-            $csrc.= "                val_$i = decoded_val_$i;\n";
-        }elsif($column_encodings[$i] eq 'datetime'){
-            $csrc.= "                char decoded_buf_$i"."[datetime_get_bufsize()];\n";
-            $csrc.= "                struct tagbstring tb_decoded_$i={datetime_get_bufsize(),0,decoded_buf_$i};\n";
-            $csrc.= "                bstring decoded_val_$i = &tb_decoded_$i;\n";
-            $csrc.= "                datetime_from_integer(val_$i, decoded_val_$i);\n";
-            $csrc.= "                val_$i = decoded_val_$i;\n";
-        }
-
-
-        $csrc.= "                fprintf(stdout, \"%s\",val_$i"."->data);\n";
-        $csrc.= "                fputs(\"\\t\",stdout);\n" unless $i==$n_cols-1;
-        #$csrc.= "                printf(\"col $i: %d\\n\","."(int) vals[$i]);\n";
+        $csrc.= "            fputs((char *)(val_$i"."->data),stdout);\n";
+        $csrc.= "            fputs(\"\\t\",stdout);\n" unless $i==$n_cols-1;
+        #$csrc.= "            printf(\"col $i: %d\\n\","."(int) vals[$i]);\n";
 
     }
     $csrc.=<<'ENDC';
@@ -1208,13 +1172,25 @@ ENDC
 
     #'bstrlib.c'
 
-    system('gcc','-Wall','-std=c99','-s','-O3','-fwhole-program','-Winline','-ftree-vectorizer-verbose=2','-ffast-math','-msse2','-finline-limit=12000','--param', 'large-function-growth=1000',$filename,'-o',$execname);
+    my $ts=time;
+    #'-O3'
+    #'-pg','-g'
+    #'-fivopts','-ftree-loop-im','-ftree-loop-linear'
+    #'-fvariable-expansion-in-unroller'
+    system('gcc','-O3','-s','-Wall','-ftracer',,'-std=c99',,'-fwhole-program','--combine','-Winline','-ftree-vectorizer-verbose=2','-ffast-math','-msse2','-finline-limit=12000','--param', 'large-function-growth=1000','--param','inline-unit-growth=100',$filename,'-o',$execname);
 
     die "compilation error" if $?;
 
+    my $ctime = time-$ts;
 
+    warn "compiled in $ctime\n";
 
-    system(cwd().'/'.$execname);
+    $ts=time;
+    #'valgrind', '--tool=cachegrind','--branch-sim=yes',
+    system( cwd().'/'.$execname);
+    my $rtime = time-$ts;
+
+    warn "executed in $rtime\n";
 
 }
 

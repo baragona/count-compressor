@@ -635,12 +635,36 @@ for (my $c=0;$c<$n_cols;$c++){
 
 #warn Dumper \%col_to_value_to_most_popular_friends;
 
+my $col_to_val_plus_friends_uniques;
+for my $ceez(@predictor_cols){
+    for my $val(keys %{$col_to_value_to_friends_str_to_count{$ceez}}){
+        for my $friends(keys %{$col_to_value_to_friends_str_to_count{$ceez}->{$val}}){
+            $col_to_val_plus_friends_uniques->{$ceez}++;
+        }
+    }
+}
+
+my $col_to_friends_uniques;
+for my $ceez(@predictor_cols){
+    $col_to_friends_uniques->{$ceez} = scalar keys(%{$col_to_friends_str_to_count{$ceez}});
+}
+
+my $col_to_values_uniques;
+for my $ceez(@predictor_cols){
+    $col_to_values_uniques->{$ceez} = scalar keys(%{$col_to_value_to_most_popular_friends{$ceez}});
+}
+
+
+warn Dumper $col_to_val_plus_friends_uniques;
+warn Dumper $col_to_friends_uniques;
+warn Dumper $col_to_values_uniques;
 
 {
     local $Data::Dumper::Indent=0;
     local $Data::Dumper::Terse=1;
     #local $Data::Dumper::Useqq=1;
     local $Data::Dumper::Pair=',';
+    local $Data::Dumper::Sortkeys=1;
     print INDEX Dumper {
         #col_to_sorted_keys => \@col_to_sorted_keys,
         n_cols => $n_cols,
@@ -656,6 +680,9 @@ for (my $c=0;$c<$n_cols;$c++){
         n_rows => $#records+1,
         col_to_max_stored_vals => [map {scalar(@{$col_to_currently_stored_val_list[$_]})} (0..($n_cols-1))],
         col_to_uniques => \@col_to_uniques,
+        col_to_val_plus_friends_uniques => $col_to_val_plus_friends_uniques,
+        col_to_friends_uniques => $col_to_friends_uniques,
+        col_to_values_uniques => $col_to_values_uniques,
         };
     #print INDEX encode_json \@col_to_sorted_keys;
     #store_fd \@col_to_sorted_keys, \*INDEX;

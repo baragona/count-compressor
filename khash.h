@@ -208,6 +208,26 @@ static const double __ac_HASH_UPPER = 0.77;
 			h->upper_bound = (khint_t)(h->n_buckets * __ac_HASH_UPPER + 0.5); \
 		}																\
 	}																	\
+	static inline void kh_resize_empty_##name(kh_##name##_t *h, khint_t new_n_buckets) \
+	{																	\
+		uint32_t *new_flags = 0;										\
+		{																\
+			khint_t t = __ac_HASH_PRIME_SIZE - 1;						\
+			while (__ac_prime_list[t] > new_n_buckets) --t;				\
+			new_n_buckets = __ac_prime_list[t+1];						\
+            new_flags = (uint32_t*)malloc(((new_n_buckets>>4) + 1) * sizeof(uint32_t));	\
+            memset(new_flags, 0xaa, ((new_n_buckets>>4) + 1) * sizeof(uint32_t)); \
+            h->keys = (khkey_t*)realloc(h->keys, new_n_buckets * sizeof(khkey_t)); \
+            if (kh_is_map)										\
+                h->vals = (khval_t*)realloc(h->vals, new_n_buckets * sizeof(khval_t)); \
+																		\
+		}																\
+        free(h->flags);												\
+        h->flags = new_flags;										\
+        h->n_buckets = new_n_buckets;								\
+        h->n_occupied = h->size;									\
+        h->upper_bound = (khint_t)(h->n_buckets * __ac_HASH_UPPER + 0.5); \
+	}																	\
 	static inline khint_t kh_put_##name(kh_##name##_t *h, khkey_t key, int *ret) \
 	{																	\
 		khint_t x;														\
@@ -215,6 +235,40 @@ static const double __ac_HASH_UPPER = 0.77;
 			if (h->n_buckets > (h->size<<1)) kh_resize_##name(h, h->n_buckets - 1); \
 			else kh_resize_##name(h, h->n_buckets + 1);					\
 		}																\
+		{																\
+			khint_t inc, k, i, site, last;								\
+			x = site = h->n_buckets; k = __hash_func(key); i = k % h->n_buckets; \
+			if (__ac_isempty(h->flags, i)) x = i;						\
+			else {														\
+				inc = 1 + k % (h->n_buckets - 1); last = i;				\
+				while (!__ac_isempty(h->flags, i) && (__ac_isdel(h->flags, i) || !__hash_equal(h->keys[i], key))) { \
+					if (__ac_isdel(h->flags, i)) site = i;				\
+					if (i + inc >= h->n_buckets) i = i + inc - h->n_buckets; \
+					else i += inc;										\
+					if (i == last) { x = site; break; }					\
+				}														\
+				if (x == h->n_buckets) {								\
+					if (__ac_isempty(h->flags, i) && site != h->n_buckets) x = site; \
+					else x = i;											\
+				}														\
+			}															\
+		}																\
+		if (__ac_isempty(h->flags, x)) {								\
+			h->keys[x] = key;											\
+			__ac_set_isboth_false(h->flags, x);							\
+			++h->size; ++h->n_occupied;									\
+			*ret = 1;													\
+		} else if (__ac_isdel(h->flags, x)) {							\
+			h->keys[x] = key;											\
+			__ac_set_isboth_false(h->flags, x);							\
+			++h->size;													\
+			*ret = 2;													\
+		} else *ret = 0;												\
+		return x;														\
+	}																	\
+	static inline khint_t kh_put_without_resizing_##name(kh_##name##_t *h, khkey_t key, int *ret) \
+	{																	\
+		khint_t x;														\
 		{																\
 			khint_t inc, k, i, site, last;								\
 			x = site = h->n_buckets; k = __hash_func(key); i = k % h->n_buckets; \
@@ -279,7 +333,10 @@ static inline khint_t __ac_X31_hash_string(const char *s)
 #define kh_destroy(name, h) kh_destroy_##name(h)
 #define kh_clear(name, h) kh_clear_##name(h)
 #define kh_resize(name, h, s) kh_resize_##name(h, s)
+#define kh_resize_empty(name, h, s) kh_resize_empty_##name(h, s) //custom
+
 #define kh_put(name, h, k, r) kh_put_##name(h, k, r)
+#define kh_put_without_resizing(name, h, k, r) kh_put_without_resizing_##name(h, k, r) //custom
 #define kh_get(name, h, k) kh_get_##name(h, k)
 #define kh_del(name, h, k) kh_del_##name(h, k)
 
@@ -312,5 +369,41 @@ typedef const char *kh_cstr_t;
 
 #define KHASH_MAP_INIT_STR(name, khval_t)								\
 	KHASH_INIT(name, kh_cstr_t, khval_t, 1, kh_str_hash_func, kh_str_hash_equal)
+
+
+
+/* CUSTOM ADDITIONS TO THIS LIBRARY */
+
+
+
+//inverse of
+//(khint_t)(h->n_buckets * __ac_HASH_UPPER + 0.5)
+#define kh_get_n_buckets_to_store_n_keys(n_keys)  (((khint_t)((((double)n_keys) - 0.5)/__ac_HASH_UPPER)) + 3)
+
+
+
+//returns new value
+//uses gcc statement-expressions
+#define kh_increment(type,ptr,value) ({\
+    khiter_t k = kh_get(type, ptr, value);\
+    int is_missing = (k == kh_end(ptr));\
+    if(is_missing){\
+        int ret;\
+        k = kh_put_without_resizing(type, ptr, value, &ret);\
+        kh_value(ptr,k)=0;\
+    }\
+    kh_value(ptr,k)++;kh_value(ptr,k);})
+
+
+
+//returns pointer to the value, or null
+//uses gcc statement-expressions
+#define kh_get_val_ptr(type,ptr,value) ({\
+    khiter_t k = kh_get(type, ptr, value);\
+    int is_missing = (k == kh_end(ptr));\
+    is_missing ? NULL : &(kh_value(ptr,k));})
+
+
+
 
 #endif /* __AC_KHASH_H */
