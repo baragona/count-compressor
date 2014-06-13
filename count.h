@@ -611,8 +611,43 @@ MAYBE INLINE void datetime_from_integer(bstring src, bstring dest){
     diff -= mo;
     diff /= 12;
     uint64_t y  = diff + 2000;
+    int amt=20;
 
-    int amt = snprintf((char *)dest->data,20, "%04d-%02d-%02d %02d:%02d:%02d", (int)y, (int)mo, (int)d, (int)h, (int)mi, (int)s);
+
+    for(int i=0;i<20;i++){
+        dest->data[i]=0;
+    }
+
+    int pos=0;
+    my_itoa(y,(char *)dest->data+pos);//assume 4 digit year!
+    pos=5;
+    if(mo<10){pos++;}
+    my_itoa(mo,(char *)dest->data+pos);
+    pos=8;
+    if(d<10){pos++;}
+    my_itoa(d,(char *)dest->data+pos);
+    pos=11;
+
+    if(h<10){pos++;}
+    my_itoa(h,(char *)dest->data+pos);
+    pos=14;
+
+    if(mi<10){pos++;}
+    my_itoa(mi,(char *)dest->data+pos);
+    pos=17;
+
+    if(s<10){pos++;}
+    my_itoa(s,(char *)dest->data+pos);
+
+    static const char * template = "0000-00-00 00:00:00";
+
+    for(int i=0;i<20;i++){
+        if(dest->data[i] == 0 ){
+            dest->data[i]=template[i];
+        }
+    }
+
+    //int amt = snprintf((char *)dest->data,20, "%04d-%02d-%02d %02d:%02d:%02d", (int)y, (int)mo, (int)d, (int)h, (int)mi, (int)s);
     dest->data[amt]=0;
     dest->slen=amt;
 }

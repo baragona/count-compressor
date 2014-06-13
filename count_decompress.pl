@@ -675,48 +675,48 @@ int main(int argc, char ** argv){
 ENDC
 
     $csrc.=<<ENDC;
-    const int BINARY = $binary_fileno;
-    const int BINARY2 = $binary2_fileno;
+    static const int BINARY = $binary_fileno;
+    static const int BINARY2 = $binary2_fileno;
 
-    const int print_encodings=0;
+    static const int print_encodings=0;
 
-    const __uint128_t one = 1;
+    static const __uint128_t one = 1;
     //__uint128_t test=one<<5;
 
 
-    int col_to_n_stored_vals[$n_cols]={0};
+    static int col_to_n_stored_vals[$n_cols]={0};
 
 
-    uint64_t col_to_ref_count[$n_cols]={0};
-    uint64_t col_to_ref_sum[$n_cols]={0};
+    static uint64_t col_to_ref_count[$n_cols]={0};
+    static uint64_t col_to_ref_sum[$n_cols]={0};
 
 
-    int col_to_string_pool_length[$n_cols]={0};
+    static int col_to_string_pool_length[$n_cols]={0};
 ENDC
 
     for(my $i=0;$i<$n_cols;$i++){
-        $csrc.= "    bstring string_pool_$i"."\t[$col_to_uniques[$i]];\n";
+        $csrc.= "    static bstring string_pool_$i"."\t[$col_to_uniques[$i]];\n";
     }
-    $csrc.= "    bstring * const col_to_string_pool[] = {".(join ',', map {"string_pool_$_"} (0..($n_cols-1)))."};\n";
+    $csrc.= "    static bstring * const col_to_string_pool[] = {".(join ',', map {"string_pool_$_"} (0..($n_cols-1)))."};\n";
 
     for(my $i=0;$i<$n_cols;$i++){
-        $csrc.= "    string_id stored_vals_$i\t[$col_to_max_stored_vals[$i]];\n";
+        $csrc.= "    static string_id stored_vals_$i\t[$col_to_max_stored_vals[$i]];\n";
     }
-    $csrc.= "    string_id * const col_to_stored_vals[] = {".(join ',', map {"stored_vals_$_"} (0..($n_cols-1)))."};\n";
+    $csrc.= "    static string_id * const col_to_stored_vals[] = {".(join ',', map {"stored_vals_$_"} (0..($n_cols-1)))."};\n";
     for(my $i=0;$i<=$#predictor_cols;$i++){
         #$csrc.= "    printf(\"%d\t%d\\n\",(int)sizeof(struct friends_$i),(int)sizeof(struct value_$i));\n";
     }
 
-    $csrc.= "    const int col_to_max_length[] = {".(join ',',(map {count::log2_int($col_to_max_length[$_])} (0..($n_cols-1))))."};\n";
+    $csrc.= "    static const int col_to_max_length[] = {".(join ',',(map {count::log2_int($col_to_max_length[$_])} (0..($n_cols-1))))."};\n";
 
     for(my $i=0;$i<=$#predictor_cols;$i++){
-        $csrc.= "    khash_t(value_to_friends_$i) *value_to_most_popular_friends_$i = kh_init(value_to_friends_$i);\n";
+        $csrc.= "    khash_t(value_to_friends_$i) * const value_to_most_popular_friends_$i = kh_init(value_to_friends_$i);\n";
     }
     for(my $i=0;$i<=$#predictor_cols;$i++){
-        $csrc.= "    khash_t(val_plus_friends_to_count_$i) *val_to_friends_to_count_$i = kh_init(val_plus_friends_to_count_$i);\n";
+        $csrc.= "    khash_t(val_plus_friends_to_count_$i) * const val_to_friends_to_count_$i = kh_init(val_plus_friends_to_count_$i);\n";
     }
     for(my $i=0;$i<=$#predictor_cols;$i++){
-        $csrc.= "    khash_t(friends_to_count_$i) *friends_to_count_$i = kh_init(friends_to_count_$i);\n";
+        $csrc.= "    khash_t(friends_to_count_$i) * const friends_to_count_$i = kh_init(friends_to_count_$i);\n";
     }
 
     for(my $i=0;$i<=$#predictor_cols;$i++){
@@ -734,7 +734,7 @@ ENDC
 
 
     for(my $i=0;$i<=$#predictor_cols;$i++){
-        $csrc.= "    struct friends_$i most_popular_friends_$i={0};\n";
+        $csrc.= "    static struct friends_$i most_popular_friends_$i={0};\n";
     }
 
 
@@ -755,18 +755,18 @@ ENDC
     }
 
 
-    $csrc.= "    const unsigned char alphabet_lookup[] = {".(join ',', map {$_?$_:0} @alphabet_lookup_tbl)."};\n";
-    $csrc.= "    const unsigned char col_to_bits_lookup_tbl[] = {".(join ',', @col_to_bits_lookup_tbl)."};\n";
+    $csrc.= "    static const unsigned char alphabet_lookup[] = {".(join ',', map {$_?$_:0} @alphabet_lookup_tbl)."};\n";
+    $csrc.= "    static const unsigned char col_to_bits_lookup_tbl[] = {".(join ',', @col_to_bits_lookup_tbl)."};\n";
 
 
 
 
     $csrc .= "    typedef ".count::ctype_for_bitarray(8*$col_to_max_length[$driving_column])." driving_col_as_number;";
-    $csrc.= "    string_id previous_row[$n_cols]={0};\n";
+    $csrc.= "    static string_id previous_row[$n_cols]={0};\n";
     $csrc.=<<ENDC;
-    int r=0;
+    static int r=0;
 
-    driving_col_as_number previous_driving_col_number=0;
+    static driving_col_as_number previous_driving_col_number=0;
 
     while(r < $correct_n_rows){
 
@@ -1062,14 +1062,6 @@ ENDC
         $csrc.= "            struct friends_$i friends={".(join ',', map {"vals[$_]"} @{$col_to_predicted_cols{$predictor_cols[$i]}})."};\n";
         $csrc.= "            struct value_$i value={".(join ',', map {"vals[$_]"} (split /-/, substr($predictor_cols[$i],0,-4)) )."};\n";
         $csrc.= "            struct val_plus_friends_$i val_plus_friends = {value,friends};\n";
-#         $csrc.= "            khiter_t k = kh_get(val_plus_friends_to_count_$i, val_to_friends_to_count_$i, val_plus_friends);\n";
-#         $csrc.= "            int is_missing = (k == kh_end(val_to_friends_to_count_$i));\n";
-#         $csrc.= "            if(is_missing){\n";
-#         $csrc.= "                int ret;\n";
-#         $csrc.= "                k = kh_put_without_resizing(val_plus_friends_to_count_$i, val_to_friends_to_count_$i, val_plus_friends, &ret);\n";
-#         $csrc.= "                kh_value(val_to_friends_to_count_$i,k)=0;\n";
-#         $csrc.= "            }\n";
-#         $csrc.= "            kh_value(val_to_friends_to_count_$i,k)++;\n";
         $csrc.= "            int new_count = kh_increment(val_plus_friends_to_count_$i, val_to_friends_to_count_$i, val_plus_friends);\n";
         $csrc.= "            struct friends_$i *most_popular_friends = kh_get_val_ptr(value_to_friends_$i, value_to_most_popular_friends_$i, value);\n";
         $csrc.= "            if(most_popular_friends==NULL){\n";
@@ -1081,8 +1073,8 @@ ENDC
         $csrc.= "                khiter_t k=kh_get(value_to_friends_$i, value_to_most_popular_friends_$i, value);\n";
         $csrc.= "                kh_val(value_to_most_popular_friends_$i,k)=friends;\n";
         $csrc.= "            }\n";
-        $csrc.= "            new_count = kh_increment(friends_to_count_$i, friends_to_count_$i, friends);\n";
-        $csrc.= "            if((r == 0) || (new_count >= kh_val(friends_to_count_$i,kh_get(friends_to_count_$i, friends_to_count_$i, most_popular_friends_$i)))){\n";
+        $csrc.= "            int new_count2 = kh_increment(friends_to_count_$i, friends_to_count_$i, friends);\n";
+        $csrc.= "            if((r == 0) || (new_count2 >= kh_val(friends_to_count_$i,kh_get(friends_to_count_$i, friends_to_count_$i, most_popular_friends_$i)))){\n";
         $csrc.= "                most_popular_friends_$i = friends;\n";
         $csrc.= "            }\n";
         $csrc.= "            \n";
@@ -1090,16 +1082,6 @@ ENDC
         $csrc.= "        }\n";
     }
 
-#             $col_to_value_to_friends_str_to_count{$ceez}->{$value}{$friends_str}++;
-#             my $new_count = $col_to_value_to_friends_str_to_count{$ceez}->{$value}{$friends_str};
-#             if((not defined $col_to_value_to_most_popular_friends{$ceez}->{$value}) or ($new_count >= $col_to_value_to_friends_str_to_count{$ceez}->{$value}->{$col_to_value_to_most_popular_friends{$ceez}->{$value}})){
-#                 $col_to_value_to_most_popular_friends{$ceez}->{$value}=$friends_str;
-#             }
-#             $col_to_friends_str_to_count{$ceez}->{$friends_str}++;
-#             $new_count = $col_to_friends_str_to_count{$ceez}->{$friends_str};
-#             if((not defined $col_to_most_popular_friends{$ceez}) or ($new_count >= $col_to_friends_str_to_count{$ceez}->{$col_to_most_popular_friends{$ceez}})){
-#                 $col_to_most_popular_friends{$ceez}=$friends_str;
-#             }
 
     $csrc.=<<'ENDC';
 
@@ -1177,7 +1159,7 @@ ENDC
     #'-pg','-g'
     #'-fivopts','-ftree-loop-im','-ftree-loop-linear'
     #'-fvariable-expansion-in-unroller'
-    system('gcc','-O3','-s','-Wall','-ftracer',,'-std=c99',,'-fwhole-program','--combine','-Winline','-ftree-vectorizer-verbose=2','-ffast-math','-msse2','-finline-limit=12000','--param', 'large-function-growth=1000','--param','inline-unit-growth=100',$filename,'-o',$execname);
+    system('gcc','-O3','-funroll-loops',,'-Wall','-ftracer',,'-std=c99',,'-fwhole-program','--combine','-Winline','-ftree-vectorizer-verbose=2','-ffast-math','-msse2','-finline-limit=12000','--param', 'large-function-growth=1000','--param','inline-unit-growth=100',$filename,'-o',$execname);
 
     die "compilation error" if $?;
 
