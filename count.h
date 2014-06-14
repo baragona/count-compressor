@@ -530,6 +530,22 @@ PURE INLINE uint32_t jenkins_hash(const char *key, const size_t len){
     }
 }
 
+MAYBE PURE INLINE uint32_t jenkins_hash_unmodified(const char *key, const size_t len){
+    uint32_t hash, i;
+        hash = 0;
+
+    for(i = 0; i < len; ++i)
+    {
+        hash += key[i];
+        hash += (hash << 10);
+        hash ^= (hash >> 6);
+    }
+    hash += (hash << 3);
+    hash ^= (hash >> 11);
+    hash += (hash << 15);
+    return hash;
+}
+
 MAYBE PURE INLINE char my_memcmp(const void *a, const void *b, const size_t len){//only compare for equality
 
 
@@ -649,7 +665,7 @@ MAYBE INLINE void datetime_from_integer(bstring src, bstring dest){
 
     //int amt = snprintf((char *)dest->data,20, "%04d-%02d-%02d %02d:%02d:%02d", (int)y, (int)mo, (int)d, (int)h, (int)mi, (int)s);
     dest->data[amt]=0;
-    dest->slen=amt;
+    dest->slen=19;
 }
 
 

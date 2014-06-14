@@ -435,7 +435,8 @@ if($operating_mode eq 'perl'){
             my $row_string = (join "\t", @vals);
             print ($row_string."\n");
             if($check_sum){
-                $rows_sum += count::str2num(substr(md5($row_string),0,3));#first 3 bytes of md5 sum
+                #$rows_sum += count::str2num(substr(md5($row_string),0,3));#first 3 bytes of md5 sum
+                $rows_sum += (count::jenkins_hash_unmodified($row_string) & ((2**24)-1))
             }
             $dupes--;
             $r++;
@@ -683,6 +684,7 @@ ENDC
     static const __uint128_t one = 1;
     //__uint128_t test=one<<5;
 
+    static uint64_t rows_sum = 0;
 
     static int col_to_n_stored_vals[$n_cols]={0};
 
@@ -1092,6 +1094,10 @@ ENDC
         //- end row loop
         //check final row count
         //check row checksum
+
+
+        char fully_decoded_row[65334];
+        uint32_t end_ptr=0;
 ENDC
     for(my $i=0;$i<$n_cols;$i++){
         #$csrc.= "                warn(\"col $i\\n\");printf(\"%s\\n\",string_pool_$i"."[vals[$i]]->data);\n";
@@ -1118,24 +1124,49 @@ ENDC
             $csrc.= "        val_$i = decoded_val_$i;\n";
         }
     }
+
+
+    for(my $i=0;$i<$n_cols;$i++){
+        $csrc.= "            for(int i=0;i<val_$i"."->slen;i++){fully_decoded_row[end_ptr]=val_$i"."->data[i];end_ptr++;}\n";
+        $csrc.= "            fully_decoded_row[end_ptr]='\\t';end_ptr++;\n" unless $i==$n_cols-1;
+        #$csrc.= "            fputs((char *)(val_$i"."->data),stdout);\n";
+        #$csrc.= "            fputs(\"\\t\",stdout);\n" unless $i==$n_cols-1;
+        #$csrc.= "            printf(\"col $i: %d\\n\","."(int) vals[$i]);\n";
+
+    }
+    if($check_sum){
+        $csrc.= "            uint32_t this_sum = (jenkins_hash_unmodified(fully_decoded_row, end_ptr) & ((1<<24)-1));\n";
+    }
     $csrc.=<<'ENDC';
-        //printf("%d dupes\n",dupes);
+
+
+
+        fully_decoded_row[end_ptr]='\n';end_ptr++;
+        fully_decoded_row[end_ptr]=0;end_ptr++;
         while(dupes>0){
             r++;
             dupes--;
 ENDC
-
-    for(my $i=0;$i<$n_cols;$i++){
-        $csrc.= "            fputs((char *)(val_$i"."->data),stdout);\n";
-        $csrc.= "            fputs(\"\\t\",stdout);\n" unless $i==$n_cols-1;
-        #$csrc.= "            printf(\"col $i: %d\\n\","."(int) vals[$i]);\n";
-
+    if($check_sum){
+    $csrc.= "            rows_sum += (uint64_t)this_sum;\n";
     }
-    $csrc.=<<'ENDC';
-        fputs("\n",stdout);
+     $csrc.=<<'ENDC';
+            fputs(fully_decoded_row,stdout);
         }
+
     }
     warn("done decoding\n");
+
+ENDC
+     $csrc.=<<ENDC;
+    if($check_sum){
+       if(rows_sum==$correct_rows_sum){
+           warn("Row checksum good.\\n");
+           return 0;
+       }else{
+           fprintf(stderr, "Row checksum BAD is %llu, should be %llu.\\n", (unsigned long long )rows_sum, (unsigned long long )$correct_rows_sum);
+       }
+    }
     return 0;
 }
 

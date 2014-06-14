@@ -121,8 +121,8 @@ while(<>){
 
     #DONE MODIFYING ROW
     my $row_string = join "\t", @fields;
-    $rows_sum += count::str2num(substr(md5($row_string),0,3));#first 3 bytes of md5 sum
-
+    #$rows_sum += count::str2num(substr(md5($row_string),0,3));#first 3 bytes of md5 sum
+    $rows_sum += (count::jenkins_hash_unmodified($row_string) & ((2**24)-1));
 
 
     print INPUT_SAVE ($row_string."\n");

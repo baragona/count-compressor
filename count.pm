@@ -42,6 +42,30 @@ sub ctype_for_bitarray{
     return $type;
 }
 
+sub jenkins_hash_unmodified{
+    my $key = shift;
+    my $hash = 0;
+
+    my $thirty_two = (2**32)-1;
+
+    for(my $i = 0; $i < length($key); $i++)
+    {
+        $hash += ord(substr($key,$i,1));
+        $hash &= $thirty_two;
+        $hash += ($hash << 10);
+        $hash &= $thirty_two;
+        $hash ^= ($hash >> 6);
+        $hash &= $thirty_two;
+    }
+    $hash += ($hash << 3);
+    $hash &= $thirty_two;
+    $hash ^= ($hash >> 11);
+    $hash &= $thirty_two;
+    $hash += ($hash << 15);
+    $hash &= $thirty_two;
+    return $hash;
+}
+
 sub binary_digits{
     my $num = shift;
     my $num_digits = shift;
