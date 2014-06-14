@@ -151,23 +151,6 @@ if($operating_mode eq 'perl'){
         read_bits($stream, 8-($total_bits_read %8)) if ($total_bits_read %8)>0;
     }
 
-#     my $x=0;
-#     my $y=0;
-#
-#
-#     while(1){
-#         if(!stream_finished($BINARY)){
-#             $x+= read_bits($BINARY,1);
-#         }
-#         if(!stream_finished($BINARY2)){
-#             $y+= read_bits($BINARY2,1);
-#         }
-#         if(stream_finished($BINARY) && stream_finished($BINARY2)){
-#             printf("%f\t%f\n", $x, $y);
-#             exit(0);
-#         }
-#     }
-
     my $r=0;
     while(not stream_finished($BINARY)){
 
@@ -1017,32 +1000,6 @@ ENDC
     }
 
 
-#     for my $ceez(@predictor_cols){
-#
-#         if($predictor_column_used{$ceez}){
-
-#             my @ceez_refers = split /-/, substr($ceez,0,-4);
-#             #warn encode_json [map {$vals[$_]} @ceez_refers];
-#             my $value = freeze([map {$vals[$_]} @ceez_refers]);
-#             #warn $value;
-#             my @friends;
-#             if(exists $col_to_value_to_most_popular_friends{$ceez}->{$value}){
-#                 @friends = @{thaw $col_to_value_to_most_popular_friends{$ceez}->{$value}};
-#             }elsif(exists $col_to_most_popular_friends{$ceez}){
-#                 @friends = @{thaw $col_to_most_popular_friends{$ceez}};
-#             }else{
-#                 die "You're just unpredictable.";
-#             }
-#             my $ci=0;
-#             for my $cc(@{$col_to_predicted_cols{$ceez}}){
-#
-#                 $vals[$cc] = $friends[$ci];
-#                 $ci++;
-#             }
-#         }
-#
-#     }
-
     $csrc.=<<'ENDC';
         //store previous row vals
 ENDC
@@ -1085,67 +1042,66 @@ ENDC
     }
 
 
-    $csrc.=<<'ENDC';
-
-        //puts("decoded row\n");
-        //decode columns
-        //print output
-        //add row checksum
-        //- end row loop
-        //check final row count
-        //check row checksum
+    $csrc.=<<ENDC;
 
 
-        char fully_decoded_row[65334];
-        uint32_t end_ptr=0;
+        static char fully_decoded_row[65334];
+        uint32_t fully_decoded_row_end_idx=0;
+        static bstring val_bstrs[$n_cols];
+
+        for(int c=0;c<$n_cols;c++){
+            val_bstrs[c] = col_to_string_pool[c][vals[c]];
+        }
+
 ENDC
     for(my $i=0;$i<$n_cols;$i++){
         #$csrc.= "                warn(\"col $i\\n\");printf(\"%s\\n\",string_pool_$i"."[vals[$i]]->data);\n";
-        $csrc.= "        bstring val_$i = string_pool_$i"."[vals[$i]];\n";
+        #$csrc.= "        val_bstrs[$i] = col_to_string_pool[$i][vals[$i]];\n";
         if($column_encodings[$i] eq 'uuid'){
             #$val = count::short_uuid_unbinarize $val;
             $csrc.= "        unsigned char decoded_buf_$i"."[short_uuid_get_bufsize()];\n";
             $csrc.= "        struct tagbstring tb_decoded_$i={short_uuid_get_bufsize(),0,decoded_buf_$i};\n";
             $csrc.= "        bstring decoded_val_$i = &tb_decoded_$i;\n";
-            $csrc.= "        short_uuid_unbinarize(val_$i, decoded_val_$i);\n";
-            $csrc.= "        val_$i = decoded_val_$i;\n";
+            $csrc.= "        short_uuid_unbinarize(val_bstrs[$i], decoded_val_$i);\n";
+            $csrc.= "        val_bstrs[$i] = decoded_val_$i;\n";
         }elsif($column_encodings[$i] eq 'ip'){
             #$val = count::ip_unbinarize $val;
             $csrc.= "        unsigned char decoded_buf_$i"."[ip_get_unbinarized_bufsize()];\n";
             $csrc.= "        struct tagbstring tb_decoded_$i={ip_get_unbinarized_bufsize(),0,decoded_buf_$i};\n";
             $csrc.= "        bstring decoded_val_$i = &tb_decoded_$i;\n";
-            $csrc.= "        ip_unbinarize(val_$i, decoded_val_$i);\n";
-            $csrc.= "        val_$i = decoded_val_$i;\n";
+            $csrc.= "        ip_unbinarize(val_bstrs[$i], decoded_val_$i);\n";
+            $csrc.= "        val_bstrs[$i] = decoded_val_$i;\n";
         }elsif($column_encodings[$i] eq 'datetime'){
             $csrc.= "        unsigned char decoded_buf_$i"."[datetime_get_bufsize()];\n";
             $csrc.= "        struct tagbstring tb_decoded_$i={datetime_get_bufsize(),0,decoded_buf_$i};\n";
             $csrc.= "        bstring decoded_val_$i = &tb_decoded_$i;\n";
-            $csrc.= "        datetime_from_integer(val_$i, decoded_val_$i);\n";
-            $csrc.= "        val_$i = decoded_val_$i;\n";
+            $csrc.= "        datetime_from_integer(val_bstrs[$i], decoded_val_$i);\n";
+            $csrc.= "        val_bstrs[$i] = decoded_val_$i;\n";
         }
     }
+    $csrc.=<<ENDC;
+        for(int c=0;c<$n_cols;c++){
+            for(int i=0;i<val_bstrs[c]->slen;i++){
+                fully_decoded_row[fully_decoded_row_end_idx]=val_bstrs[c]->data[i];
+                fully_decoded_row_end_idx++;
+            }
+            fully_decoded_row[fully_decoded_row_end_idx]='\\t';fully_decoded_row_end_idx++;
+        }
+        fully_decoded_row_end_idx--; //The trailing tab char doesnt exist if it is past the fully_decoded_row_end_idx
 
+ENDC
 
-    for(my $i=0;$i<$n_cols;$i++){
-        $csrc.= "            for(int i=0;i<val_$i"."->slen;i++){fully_decoded_row[end_ptr]=val_$i"."->data[i];end_ptr++;}\n";
-        $csrc.= "            fully_decoded_row[end_ptr]='\\t';end_ptr++;\n" unless $i==$n_cols-1;
-        #$csrc.= "            fputs((char *)(val_$i"."->data),stdout);\n";
-        #$csrc.= "            fputs(\"\\t\",stdout);\n" unless $i==$n_cols-1;
-        #$csrc.= "            printf(\"col $i: %d\\n\","."(int) vals[$i]);\n";
-
-    }
     if($check_sum){
-        $csrc.= "            uint32_t this_sum = (jenkins_hash_unmodified(fully_decoded_row, end_ptr) & ((1<<24)-1));\n";
+        $csrc.= "            uint32_t this_sum = (jenkins_hash_unmodified(fully_decoded_row, fully_decoded_row_end_idx) & ((1<<24)-1));\n";
     }
     $csrc.=<<'ENDC';
 
 
 
-        fully_decoded_row[end_ptr]='\n';end_ptr++;
-        fully_decoded_row[end_ptr]=0;end_ptr++;
-        while(dupes>0){
-            r++;
-            dupes--;
+        fully_decoded_row[fully_decoded_row_end_idx]='\n';fully_decoded_row_end_idx++;
+        fully_decoded_row[fully_decoded_row_end_idx]=0;fully_decoded_row_end_idx++;
+        r+=dupes;
+        for(int i=0;i<dupes;i++){
 ENDC
     if($check_sum){
     $csrc.= "            rows_sum += (uint64_t)this_sum;\n";
